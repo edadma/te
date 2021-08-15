@@ -21,10 +21,8 @@ object Main extends App {
     nc.getch match {
       case ch =>
         buf.insert(ch.toChar)
-        nc.move(buf.line, 0)
-        Zone { implicit z =>
-          nch.printw("%s", toCString(buf.currentLine))
-        }
+        nc.move(buf.line + 1, 0)
+        Zone(implicit z => nc.addstr(toCString(buf.currentLine)))
 
         val (r, c) = buf.pos
 
@@ -87,7 +85,7 @@ class TextBuffer {
     cline += 1
   }
 
-  def currentLine: String = lines(cline).toString
+  def currentLine: String = lines(cline).mkString
 
   //def getToEndOfLine: String =
 
