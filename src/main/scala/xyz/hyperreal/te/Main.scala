@@ -4,6 +4,7 @@ import xyz.hyperreal.ncurses.{LibNCurses => nc, LibNCursesHelpers => nch}
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
+import scala.scalanative.unsafe.{CQuote, Zone, toCString}
 
 object Main extends App {
 
@@ -21,7 +22,9 @@ object Main extends App {
       case ch =>
         buf.insert(ch.toChar)
         nc.move(buf.line, 0)
-        nch.printw("%s", buf.currentLine)
+        Zone { implicit z =>
+          nch.printw("%s", toCString(buf.currentLine))
+        }
 
         val (r, c) = buf.pos
 
