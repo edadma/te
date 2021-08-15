@@ -2,6 +2,7 @@ package xyz.hyperreal.te
 
 import xyz.hyperreal.ncurses.{LibNCurses => nc, LibNCursesHelpers => nch}
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 
 object Main extends App {
@@ -14,10 +15,20 @@ object Main extends App {
 
   nc.move(1, 0)
 
+  @tailrec
   def edit(): Unit = {
     nc.getch match {
-      case ch => buf.insert(ch.toChar)
+      case ch =>
+        buf.insert(ch.toChar)
+        nc.move(buf.line, 0)
+        nch.printw("%s", buf.currentLine)
+
+        val (r, c) = buf.pos
+
+        nc.move(r + 1, c)
     }
+
+    edit()
   }
 
   edit()
@@ -27,7 +38,10 @@ object Main extends App {
 }
 
 class TextBuffer {
-  val lines   = new ArrayBuffer[ArrayBuffer[Char]]
+  val lines = new ArrayBuffer[ArrayBuffer[Char]]()
+
+  lines += new ArrayBuffer[Char]
+
   var exptabs = true
   var tabs    = 2
   var cline   = 0
@@ -40,10 +54,12 @@ class TextBuffer {
     for (i <- 0 until cchar)
       c += (if (s(i) == '\t') tabs - c % tabs else 1)
 
-    (cline + 1, c + 1)
+    (cline, c)
   }
 
   def pos(rc: (Int, Int)): Unit = {}
+
+  def line: Int = cline
 
   def backspace: Boolean = {
     false
@@ -58,17 +74,17 @@ class TextBuffer {
         cchar += spaces
       case '\n' => insertBreak()
       case _ =>
-        lines(cline).insert(cchar) = c
+        lines(cline).insert(cchar, c)
         cchar += 1
     }
 
   def insertBreak(): Unit = {
-    lines(cline) += (if (lines(cline).length > cchar) lines(cline).slice(cchar, cchar + lines(cline).length)
-                     else Seq[Char]())
+    lines(cline) ++= (if (lines(cline).length > cchar) lines(cline).slice(cchar, cchar + lines(cline).length)
+                      else Seq[Char]())
     cline += 1
   }
 
-  def getLine: String = lines(cline).toString
+  def currentLine: String = lines(cline).toString
 
   //def getToEndOfLine: String =
 
