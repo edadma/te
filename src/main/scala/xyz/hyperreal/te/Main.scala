@@ -17,54 +17,62 @@ object Main extends App {
 
   nc.move(2, 0)
 
-  @tailrec
-  def edit(): Unit = {
-    val c    = nc.getch
-    val line = buf.line
+  Zone { implicit z =>
+    @tailrec
+    def edit(): Unit = {
+      val c    = nc.getch
+      val line = buf.line
 
-    if (c == nc.KEY_LEFT)
-      buf.left
-    else if (c == nc.KEY_RIGHT)
-      buf.right
-    else if (c == nc.KEY_BACKSPACE)
-      buf.backspace
-    else
-      buf.insert(c.toChar)
+      if (c == nc.KEY_LEFT)
+        buf.left
+      else if (c == nc.KEY_RIGHT)
+        buf.right
+      else if (c == nc.KEY_BACKSPACE)
+        buf.backspace
+      else
+        buf.insert(c.toChar)
 
-    if (line != buf.line) {
-      nc.move(line + 2, 0)
-      Zone(implicit z => nc.addstr(toCString(buf.getLine(line))))
+      if (line != buf.line) {
+        nc.move(line + 2, 0)
+        nc.clrtobot
+
+        val rows = nc.getmaxy(nc.stdscr)
+
+        for (i <- line until (rows min buf.lines))
+          nc.addstr(toCString(buf.getLine(i)))
+      }
+
+      nc.move(buf.line + 2, 0)
+      Zone(implicit z => nc.addstr(toCString(buf.getCurrentLine)))
       nc.clrtoeol
+      nc.move(buf.line + 2, buf.col)
+      edit()
     }
 
-    nc.move(buf.line + 2, 0)
-    Zone(implicit z => nc.addstr(toCString(buf.getCurrentLine)))
-    nc.clrtoeol
-    nc.move(buf.line + 2, buf.col)
     edit()
   }
-
-  edit()
 
   nc.endwin
 
 }
 
 class TextBuffer {
-  val lines = new ArrayBuffer[ArrayBuffer[Char]]()
+  val text = new ArrayBuffer[ArrayBuffer[Char]]()
 
-  lines += new ArrayBuffer[Char]
+  text += new ArrayBuffer[Char]
 
   var exptabs = true
   var tabs    = 2
   var cline   = 0
   var cchar   = 0
 
+  def lines: Int = text.length
+
   def line: Int = cline
 
   def col: Int = {
     var c = 0
-    val s = lines(cline)
+    val s = text(cline)
 
     for (i <- 0 until cchar)
       c += (if (s(i) == '\t') tabs - c % tabs else 1)
@@ -78,15 +86,15 @@ class TextBuffer {
       true
     } else if (cline > 0) {
       cline -= 1
-      cchar = lines(cline).length
+      cchar = text(cline).length
       true
     } else false
 
   def right: Boolean =
-    if (cchar < lines(cline).length) {
+    if (cchar < text(cline).length) {
       cchar += 1
       true
-    } else if (cline < lines.length - 1) {
+    } else if (cline < text.length - 1) {
       cline += 1
       cchar = 0
       true
@@ -100,11 +108,11 @@ class TextBuffer {
   }
 
   def delete: Boolean =
-    if (cchar < lines(cline).length) {
-      lines(cline).remove(cchar)
+    if (cchar < text(cline).length) {
+      text(cline).remove(cchar)
       true
-    } else if (cline < lines.length - 1) {
-      lines.remove(cline)
+    } else if (cline < text.length - 1) {
+      text.remove(cline)
       true
     } else false
 
@@ -113,27 +121,27 @@ class TextBuffer {
       case '\t' if exptabs =>
         val spaces = tabs - c % tabs
 
-        lines(cline).insertAll(cchar, " " * spaces)
+        text(cline).insertAll(cchar, " " * spaces)
         cchar += spaces
       case '\n' => insertBreak()
       case _ =>
-        lines(cline).insert(cchar, c)
+        text(cline).insert(cchar, c)
         cchar += 1
     }
 
   def insertBreak(): Unit = {
-    lines.insert(cline + 1,
-                 if (lines(cline).length > cchar) lines(cline).slice(cchar, lines(cline).length)
-                 else new ArrayBuffer[Char])
+    text.insert(cline + 1,
+                if (text(cline).length > cchar) text(cline).slice(cchar, text(cline).length)
+                else new ArrayBuffer[Char])
 
-    if (lines(cline).length > cchar)
-      lines(cline).remove(cchar, lines(cline).length - cchar)
+    if (text(cline).length > cchar)
+      text(cline).remove(cchar, text(cline).length - cchar)
 
     cline += 1
     cchar = 0
   }
 
-  def getLine(l: Int): String = lines(l).mkString
+  def getLine(l: Int): String = text(l).mkString
 
   def getCurrentLine: String = getLine(cline)
 
