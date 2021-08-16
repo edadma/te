@@ -42,7 +42,7 @@ object Main extends App {
 
           //print(buf.text)
 
-          for (i <- line until (rows min buf.lines)) {
+          for (i <- (line min buf.line) until (rows min buf.lines)) {
             nc.move(i + 2, 0)
             nc.addstr(toCString(buf.getLine(i)))
           }
