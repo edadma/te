@@ -40,7 +40,7 @@ object Main extends App {
 
           val rows = nc.getmaxy(nc.stdscr)
 
-          //println(buf.getLine(0), buf.getLine(1))
+          //print(buf.text)
 
           for (i <- line until (rows min buf.lines)) {
             nc.move(i + 2, 0)
@@ -120,7 +120,8 @@ class TextModel {
       text(cline).remove(cchar)
       true
     } else if (cline < text.length - 1) {
-      text.remove(cline)
+      text(cline).addAll(text(cline + 1))
+      text.remove(cline + 1)
       true
     } else false
 
