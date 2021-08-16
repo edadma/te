@@ -13,38 +13,46 @@ object Main extends App {
   nc.noecho
   nc.keypad(nc.stdscr, bf = true)
 
-  val buf = new TextBuffer
+  val buf = new TextModel
 
   nc.move(2, 0)
 
   Zone { implicit z =>
     @tailrec
     def edit(): Unit = {
-      val c    = nc.getch
-      val line = buf.line
+      val c = nc.getch
 
       if (c == nc.KEY_LEFT)
         buf.left
       else if (c == nc.KEY_RIGHT)
         buf.right
-      else if (c == nc.KEY_BACKSPACE)
-        buf.backspace
-      else
-        buf.insert(c.toChar)
+      else {
+        val line = buf.line
 
-      if (line != buf.line) {
-        nc.move(line + 2, 0)
-        nc.clrtobot
+        if (c == nc.KEY_BACKSPACE)
+          buf.backspace
+        else
+          buf.insert(c.toChar)
 
-        val rows = nc.getmaxy(nc.stdscr)
+        if (line != buf.line) {
+          nc.move(line + 2, 0)
+          nc.clrtobot
 
-        for (i <- line until (rows min buf.lines))
-          nc.addstr(toCString(buf.getLine(i)))
+          val rows = nc.getmaxy(nc.stdscr)
+
+          //println(buf.getLine(0), buf.getLine(1))
+
+          for (i <- line until (rows min buf.lines)) {
+            nc.move(i + 2, 0)
+            nc.addstr(toCString(buf.getLine(i)))
+          }
+        } else {
+          nc.move(buf.line + 2, 0)
+          Zone(implicit z => nc.addstr(toCString(buf.getCurrentLine)))
+          nc.clrtoeol
+        }
       }
 
-      nc.move(buf.line + 2, 0)
-      Zone(implicit z => nc.addstr(toCString(buf.getCurrentLine)))
-      nc.clrtoeol
       nc.move(buf.line + 2, buf.col)
       edit()
     }
@@ -56,7 +64,7 @@ object Main extends App {
 
 }
 
-class TextBuffer {
+class TextModel {
   val text = new ArrayBuffer[ArrayBuffer[Char]]()
 
   text += new ArrayBuffer[Char]
