@@ -83,19 +83,18 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
   def react(e: Event): Unit = Zone { implicit z =>
     e match {
       case DocumentChange(line) =>
-      //        if (line != buf.line) {
-      //          move(line + 2, 0)
-      //          clrtobot
-      //
-      //        } else {
-      //          move(buf.line + 2, 0)
-      //          Zone(implicit z => addstr(toCString(buf.getCurrentLine)))
-      //          clrtoeol
-      //        }
+        if (visible(line)) {
+          for (i <- line until (model.lines min (top + nlines))) {
+            wmove(win, i - top, 0)
+            waddstr(win, toCString(model.getLine(i)))
+            wclrtoeol(win)
+          }
 
+          wclrtobot(win)
+        }
       case LineChange(line, from, chars) =>
         if (visible(line)) {
-          wmove(win, line, from)
+          wmove(win, line - top, from)
           waddstr(win, toCString(chars))
           wclrtoeol(win)
         }
