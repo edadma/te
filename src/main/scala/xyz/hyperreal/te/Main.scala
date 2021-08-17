@@ -1,6 +1,6 @@
 package xyz.hyperreal.te
 
-import xyz.hyperreal.ncurses.{LibNCurses => nc, LibNCursesHelpers => nch}
+import xyz.hyperreal.ncurses.LibNCurses._
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
@@ -8,60 +8,86 @@ import scala.scalanative.unsafe.{Zone, toCString}
 
 object Main extends App {
 
-  nc.initscr
-  nc.cbreak
-  nc.noecho
-  nc.keypad(nc.stdscr, bf = true)
+  initscr
+  cbreak
+  noecho
+  keypad(stdscr, bf = true)
 
-  val buf = new TextModel
+  val view      = new TextView(new TextModel, getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+  var line: Int = 0
+  var col: Int  = 0
 
-  nc.move(2, 0)
+  view.cursor(line, col)
 
   Zone { implicit z =>
     @tailrec
     def edit(): Unit = {
-      val c = nc.getch
+      val c = getch
 
-      if (c == nc.KEY_LEFT)
+      if (c == KEY_LEFT)
         buf.left
-      else if (c == nc.KEY_RIGHT)
+      else if (c == KEY_RIGHT)
         buf.right
       else {
         val line = buf.line
 
-        if (c == nc.KEY_BACKSPACE)
+        if (c == KEY_BACKSPACE)
           buf.backspace
+        else if (c == KEY_DC)
+          buf.delete
         else
           buf.insert(c.toChar)
 
         if (line != buf.line) {
-          nc.move(line + 2, 0)
-          nc.clrtobot
+          move(line + 2, 0)
+          clrtobot
 
-          val rows = nc.getmaxy(nc.stdscr)
+          val rows = getmaxy(stdscr)
 
           //print(buf.text)
 
           for (i <- (line min buf.line) until (rows min buf.lines)) {
-            nc.move(i + 2, 0)
-            nc.addstr(toCString(buf.getLine(i)))
+            move(i + 2, 0)
+            addstr(toCString(buf.getLine(i)))
           }
         } else {
-          nc.move(buf.line + 2, 0)
-          Zone(implicit z => nc.addstr(toCString(buf.getCurrentLine)))
-          nc.clrtoeol
+          move(buf.line + 2, 0)
+          Zone(implicit z => addstr(toCString(buf.getCurrentLine)))
+          clrtoeol
         }
       }
 
-      nc.move(buf.line + 2, buf.col)
+      move(buf.line + 2, buf.col)
       edit()
     }
 
     edit()
   }
 
-  nc.endwin
+  endwin
 
+}
+
+trait Event
+case class LineChange(line: Int, from: Int) extends Event
+case class LinesChange(line: Int)           extends Event
+
+class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begin_x: Int) {
+  val win: WINDOW = newwin(nlines, ncols, begin_y, begin_x)
+
+  model subscribe this
+
+  var tline: Int = 0
+  var lines: Int = 0
+
+  def cursor(line: Int, col: Int): Unit = {
+    wmove(win, line, col)
+  }
+
+  def close(): Unit = {
+    model unsubscribe this
+    delwin(win)
+  }
 }
 
 class TextModel {
@@ -69,20 +95,22 @@ class TextModel {
 
   text += new ArrayBuffer[Char]
 
+  val subscribers = new ArrayBuffer[TextView]
+
   var exptabs = true
   var tabs    = 2
-  var cline   = 0
-  var cchar   = 0
+
+  def subscribe(view: TextView): Unit = subscribers += view
+
+  def unsubscribe(view: TextView): Unit = subscribers -= view
 
   def lines: Int = text.length
 
-  def line: Int = cline
-
-  def col: Int = {
+  def char2col(line: Int, char: Int): Int = {
     var c = 0
-    val s = text(cline)
+    val s = text(line)
 
-    for (i <- 0 until cchar)
+    for (i <- 0 until char)
       c += (if (s(i) == '\t') tabs - c % tabs else 1)
 
     c
