@@ -38,7 +38,7 @@ licenses := Seq("ISC" -> url("https://opensource.org/licenses/ISC"))
 homepage := Some(url("https://github.com/edadma/" + name.value))
 
 libraryDependencies ++= Seq(
-  "xyz.hyperreal" %%% "ncurses" % "0.1.0-snapshot.14"
+  "xyz.hyperreal" %%% "ncurses" % "0.1.0-snapshot.15"
 )
 
 libraryDependencies ++= Seq(

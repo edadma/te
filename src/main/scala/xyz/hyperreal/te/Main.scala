@@ -27,7 +27,7 @@ object Main extends App {
   Zone { implicit z =>
     @tailrec
     def edit(): Unit = {
-      val c = getch
+      val c = wgetch(view.win)
 
       if (c == KEY_HOME)
         home()
@@ -94,7 +94,7 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
       case LineChange(line, from, chars) =>
         if (visible(line)) {
           wmove(win, line, from)
-          addstr(toCString(chars))
+          waddstr(win, toCString(chars))
           clrtoeol
         }
       case SegmentChange(line, from, count, chars) =>
@@ -108,7 +108,7 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
 
     for (i <- line until (rows min model.lines)) {
       wmove(win, i - top, 0)
-      addstr(toCString(model.getLine(i)))
+      waddstr(win, toCString(model.getLine(i)))
     }
   }
 
