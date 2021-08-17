@@ -19,11 +19,17 @@ object Main extends App {
 
   def home(): Unit = cursor(HOME)
 
-  def cursor(p: Pos): Unit = {
+  def cursor(p: Pos): Unit = Zone { implicit z =>
     pos = p
     move(getmaxy(stdscr) - 1, 0)
-    printw("%d:%d", p.line - view.top + 1, p.col + 1)
+    wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
+
+    val status = s"${p.line + 1}:${p.col + 1}  LF  UTF-8  2-spaces"
+
     clrtoeol
+    move(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length)
+    addstr(toCString(status))
+    wbkgdset(stdscr, ' ')
     refresh
     view.cursor(p)
   }
