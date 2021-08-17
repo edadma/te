@@ -13,20 +13,29 @@ object Main extends App {
   noecho
   keypad(stdscr, bf = true)
 
-  val view      = new TextView(new TextModel, getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
-  var line: Int = 0
-  var col: Int  = 0
+  val HOME     = Pos(0, 0)
+  val view     = new TextView(new TextModel, getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+  var pos: Pos = _
 
-  view.cursor(line, col)
+  def home(): Unit = {
+    pos = HOME
+    view.cursor(HOME)
+  }
+
+  home()
 
   Zone { implicit z =>
     @tailrec
     def edit(): Unit = {
       val c = getch
 
-      if (c == KEY_LEFT)
-        buf.left
-      else if (c == KEY_RIGHT)
+      if (c == KEY_HOME)
+        home()
+      else if (c == KEY_LEFT)
+        view.model.left(pos) match {
+          case Some((newline, newcol)) =>
+          case None                    =>
+        } else if (c == KEY_RIGHT)
         buf.right
       else {
         val line = buf.line
@@ -42,14 +51,6 @@ object Main extends App {
           move(line + 2, 0)
           clrtobot
 
-          val rows = getmaxy(stdscr)
-
-          //print(buf.text)
-
-          for (i <- (line min buf.line) until (rows min buf.lines)) {
-            move(i + 2, 0)
-            addstr(toCString(buf.getLine(i)))
-          }
         } else {
           move(buf.line + 2, 0)
           Zone(implicit z => addstr(toCString(buf.getCurrentLine)))
@@ -68,20 +69,43 @@ object Main extends App {
 
 }
 
+case class Pos(line: Int, col: Int)
+
 trait Event
-case class LineChange(line: Int, from: Int) extends Event
-case class LinesChange(line: Int)           extends Event
+case class SegmentChange(line: Int, from: Int, count: Int, chars: String) extends Event
+case class LineChange(line: Int, from: Int, chars: String)                extends Event
+case class DocumentChange(line: Int)                                      extends Event
 
 class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begin_x: Int) {
   val win: WINDOW = newwin(nlines, ncols, begin_y, begin_x)
 
   model subscribe this
 
-  var tline: Int = 0
+  var top: Int   = 0
   var lines: Int = 0
 
-  def cursor(line: Int, col: Int): Unit = {
-    wmove(win, line, col)
+  def react(e: Event): Unit =
+    e match {
+      case DocumentChange(line)                    =>
+      case LineChange(line, from, chars)           =>
+      case SegmentChange(line, from, count, chars) =>
+    }
+
+  def viewport(line: Int): Unit = Zone { implicit z =>
+    top = line
+
+    val rows = getmaxy(win)
+
+    for (i <- line until (rows min model.lines)) {
+      move(top - i, 0)
+      addstr(toCString(model.getLine(i)))
+    }
+  }
+
+  def cursor(p: Pos): Unit = {
+    if (p.line >= top && p.line < top + lines) {
+      wmove(win, p.line - top, p.col)
+    }
   }
 
   def close(): Unit = {
@@ -104,84 +128,103 @@ class TextModel {
 
   def unsubscribe(view: TextView): Unit = subscribers -= view
 
+  def event(e: Event): Unit = subscribers foreach (_ react e)
+
   def lines: Int = text.length
 
-  def char2col(line: Int, char: Int): Int = {
-    var c = 0
-    val s = text(line)
+  def char2col(line: Int, char: Int): Pos = {
+    var col = 0
+    val s   = text(line)
 
     for (i <- 0 until char)
-      c += (if (s(i) == '\t') tabs - c % tabs else 1)
+      col += (if (s(i) == '\t') tabs - col % tabs else 1)
 
-    c
+    Pos(line, col)
   }
 
-  def left: Boolean =
-    if (cchar > 0) {
-      cchar -= 1
-      true
-    } else if (cline > 0) {
-      cline -= 1
-      cchar = text(cline).length
-      true
-    } else false
+  def col2char(p: Pos): Int = {
+    var char = 0
+    var cur  = 0
+    val s    = text(p.line)
 
-  def right: Boolean =
-    if (cchar < text(cline).length) {
-      cchar += 1
-      true
-    } else if (cline < text.length - 1) {
-      cline += 1
-      cchar = 0
-      true
-    } else false
-
-  def backspace: Boolean = {
-    if (left) {
-      delete
-      true
-    } else false
-  }
-
-  def delete: Boolean =
-    if (cchar < text(cline).length) {
-      text(cline).remove(cchar)
-      true
-    } else if (cline < text.length - 1) {
-      text(cline).addAll(text(cline + 1))
-      text.remove(cline + 1)
-      true
-    } else false
-
-  def insert(c: Char): Unit =
-    c match {
-      case '\t' if exptabs =>
-        val spaces = tabs - c % tabs
-
-        text(cline).insertAll(cchar, " " * spaces)
-        cchar += spaces
-      case '\n' => insertBreak()
-      case _ =>
-        text(cline).insert(cchar, c)
-        cchar += 1
+    while (cur < p.col) {
+      cur += (if (s(char) == '\t') tabs - cur % tabs else 1)
+      char += 1
     }
 
-  def insertBreak(): Unit = {
-    text.insert(cline + 1,
-                if (text(cline).length > cchar) text(cline).slice(cchar, text(cline).length)
-                else new ArrayBuffer[Char])
-
-    if (text(cline).length > cchar)
-      text(cline).remove(cchar, text(cline).length - cchar)
-
-    cline += 1
-    cchar = 0
+    char
   }
 
-  def getLine(l: Int): String = text(l).mkString
+  def left(p: Pos): Option[Pos] = {
+    val char         = col2char(p)
+    val Pos(line, _) = p
 
-  def getCurrentLine: String = getLine(cline)
+    if (char > 0) Some(char2col(line, char - 1))
+    else if (line > 0) Some(char2col(line - 1, text(line - 1).length))
+    else None
+  }
 
-  //def getToEndOfLine: String =
+  def right(p: Pos): Option[Pos] = {
+    val char         = col2char(p)
+    val Pos(line, _) = p
+
+    if (char < text(line).length) Some(char2col(line, char + 1))
+    else if (line < text.length - 1) Some(Pos(line + 1, 0))
+    else None
+  }
+
+  def backspace(p: Pos): Option[Pos] = left(p) map delete
+
+  def delete(p: Pos): Pos = {
+    val char           = col2char(p)
+    val Pos(line, col) = p
+
+    if (char < text(line).length) {
+      text(line).remove(char)
+      event(LineChange(line, col, slice(line, char)))
+    } else if (line < text.length - 1) {
+      text(line).addAll(text(line + 1))
+      text.remove(line + 1)
+      event(DocumentChange(line))
+    }
+
+    p
+  }
+
+  def slice(line: Int, from: Int, until: Int): String = text(line).slice(from, until).mkString
+
+  def slice(line: Int, from: Int): String = slice(line, from, text(line).length)
+
+  def insert(p: Pos, c: Char): (Int, Int) = {
+    val char           = col2char(p)
+    val Pos(line, col) = p
+
+    c match {
+      case '\t' if exptabs =>
+        val spaces = tabs - col % tabs
+
+        text(line).insertAll(char, " " * spaces)
+        event(LineChange(line, col, slice(line, char)))
+        (line, col + spaces)
+      case '\n' =>
+        text.insert(line + 1,
+                    if (text(line).length > char) text(line).slice(char, text(line).length)
+                    else new ArrayBuffer[Char])
+
+        if (text(line).length > char) {
+          text(line).remove(char, text(line).length - char)
+          event(DocumentChange(line))
+        } else
+          event(DocumentChange(line + 1))
+
+        (line + 1, 0)
+      case _ =>
+        text(line).insert(char, c)
+        event(LineChange(line, col, slice(line, char)))
+        (line, col + 1)
+    }
+  }
+
+  def getLine(line: Int): String = text(line).mkString
 
 }
