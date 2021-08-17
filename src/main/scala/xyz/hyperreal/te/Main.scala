@@ -11,7 +11,6 @@ object Main extends App {
   initscr
   cbreak
   noecho
-  keypad(stdscr, bf = true)
 
   val HOME     = Pos(0, 0)
   val view     = new TextView(new TextModel, getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
@@ -22,6 +21,7 @@ object Main extends App {
     view.cursor(HOME)
   }
 
+  keypad(view.win, bf = true)
   home()
 
   Zone { implicit z =>
@@ -47,9 +47,11 @@ object Main extends App {
           view.cursor(p)
         }
       } else if (c == KEY_DC)
-        view.model.delete(pos)
-      else
+        view.cursor(view.model.delete(pos))
+      else {
         pos = view.model.insert(pos, c.toChar)
+        view.cursor(pos)
+      }
 
       edit()
     }
@@ -95,7 +97,7 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
         if (visible(line)) {
           wmove(win, line, from)
           waddstr(win, toCString(chars))
-          clrtoeol
+          wclrtoeol(win)
         }
       case SegmentChange(line, from, count, chars) =>
     }
