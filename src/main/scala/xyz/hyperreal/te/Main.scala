@@ -40,6 +40,8 @@ object Main extends App {
 
     if (c == KEY_HOME)
       home()
+    else if (c == KEY_UP)
+      view.model.up(pos) foreach cursor
     else if (c == KEY_LEFT)
       view.model.left(pos) foreach cursor
     else if (c == KEY_RIGHT) {
@@ -161,12 +163,19 @@ class TextModel {
     var cur  = 0
     val s    = text(p.line)
 
-    while (cur < p.col) {
+    while (cur < p.col && char < s.length) {
       cur += (if (s(char) == '\t') tabs - cur % tabs else 1)
       char += 1
     }
 
     char
+  }
+
+  def up(p: Pos): Option[Pos] = {
+    val Pos(line, _) = p
+
+    if (line > 0) Some(char2col(line - 1, col2char(p.copy(line = line - 1))))
+    else None
   }
 
   def left(p: Pos): Option[Pos] = {
