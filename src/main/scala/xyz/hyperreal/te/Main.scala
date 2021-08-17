@@ -31,34 +31,26 @@ object Main extends App {
 
       if (c == KEY_HOME)
         home()
-      else if (c == KEY_LEFT)
-        view.model.left(pos) match {
-          case Some((newline, newcol)) =>
-          case None                    =>
-        } else if (c == KEY_RIGHT)
-        buf.right
-      else {
-        val line = buf.line
-
-        if (c == KEY_BACKSPACE)
-          buf.backspace
-        else if (c == KEY_DC)
-          buf.delete
-        else
-          buf.insert(c.toChar)
-
-        if (line != buf.line) {
-          move(line + 2, 0)
-          clrtobot
-
-        } else {
-          move(buf.line + 2, 0)
-          Zone(implicit z => addstr(toCString(buf.getCurrentLine)))
-          clrtoeol
+      else if (c == KEY_LEFT) {
+        view.model.left(pos) foreach { p =>
+          pos = p
+          view.cursor(p)
         }
-      }
+      } else if (c == KEY_RIGHT) {
+        view.model.right(pos) foreach { p =>
+          pos = p
+          view.cursor(p)
+        }
+      } else if (c == KEY_BACKSPACE) {
+        view.model.backspace(pos) foreach { p =>
+          pos = p
+          view.cursor(p)
+        }
+      } else if (c == KEY_DC)
+        view.model.delete(pos)
+      else
+        pos = view.model.insert(pos, c.toChar)
 
-      move(buf.line + 2, buf.col)
       edit()
     }
 
@@ -84,12 +76,28 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
   var top: Int   = 0
   var lines: Int = 0
 
-  def react(e: Event): Unit =
+  def react(e: Event): Unit = Zone { implicit z =>
     e match {
-      case DocumentChange(line)                    =>
-      case LineChange(line, from, chars)           =>
+      case DocumentChange(line) =>
+      //        if (line != buf.line) {
+      //          move(line + 2, 0)
+      //          clrtobot
+      //
+      //        } else {
+      //          move(buf.line + 2, 0)
+      //          Zone(implicit z => addstr(toCString(buf.getCurrentLine)))
+      //          clrtoeol
+      //        }
+
+      case LineChange(line, from, chars) =>
+        if (visible(line)) {
+          wmove(win, line, from)
+          addstr(toCString(chars))
+          clrtoeol
+        }
       case SegmentChange(line, from, count, chars) =>
     }
+  }
 
   def viewport(line: Int): Unit = Zone { implicit z =>
     top = line
@@ -102,8 +110,10 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
     }
   }
 
+  def visible(line: Int): Boolean = line >= top && line < top + lines
+
   def cursor(p: Pos): Unit = {
-    if (p.line >= top && p.line < top + lines) {
+    if (visible(p.line)) {
       wmove(win, p.line - top, p.col)
     }
   }
@@ -195,7 +205,7 @@ class TextModel {
 
   def slice(line: Int, from: Int): String = slice(line, from, text(line).length)
 
-  def insert(p: Pos, c: Char): (Int, Int) = {
+  def insert(p: Pos, c: Char): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
 
@@ -205,7 +215,7 @@ class TextModel {
 
         text(line).insertAll(char, " " * spaces)
         event(LineChange(line, col, slice(line, char)))
-        (line, col + spaces)
+        Pos(line, col + spaces)
       case '\n' =>
         text.insert(line + 1,
                     if (text(line).length > char) text(line).slice(char, text(line).length)
@@ -217,11 +227,11 @@ class TextModel {
         } else
           event(DocumentChange(line + 1))
 
-        (line + 1, 0)
+        Pos(line + 1, 0)
       case _ =>
         text(line).insert(char, c)
         event(LineChange(line, col, slice(line, char)))
-        (line, col + 1)
+        Pos(line, col + 1)
     }
   }
 
