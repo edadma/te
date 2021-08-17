@@ -21,44 +21,34 @@ object Main extends App {
     view.cursor(HOME)
   }
 
-  keypad(view.win, bf = true)
-  home()
-
-  Zone { implicit z =>
-    @tailrec
-    def edit(): Unit = {
-      val c = wgetch(view.win)
-
-      if (c == KEY_HOME)
-        home()
-      else if (c == KEY_LEFT) {
-        view.model.left(pos) foreach { p =>
-          pos = p
-          view.cursor(p)
-        }
-      } else if (c == KEY_RIGHT) {
-        view.model.right(pos) foreach { p =>
-          pos = p
-          view.cursor(p)
-        }
-      } else if (c == KEY_BACKSPACE) {
-        view.model.backspace(pos) foreach { p =>
-          pos = p
-          view.cursor(p)
-        }
-      } else if (c == KEY_DC)
-        view.cursor(view.model.delete(pos))
-      else {
-        pos = view.model.insert(pos, c.toChar)
-        view.cursor(pos)
-      }
-
-      edit()
-    }
-
-    edit()
+  def cursor(p: Pos): Unit = {
+    pos = p
+    view.cursor(p)
   }
 
+  @tailrec
+  def listen(): Unit = {
+    val c = wgetch(view.win)
+
+    if (c == KEY_HOME)
+      home()
+    else if (c == KEY_LEFT)
+      view.model.left(pos) foreach cursor
+    else if (c == KEY_RIGHT) {
+      view.model.right(pos) foreach cursor
+    } else if (c == KEY_BACKSPACE) {
+      view.model.backspace(pos) foreach cursor
+    } else if (c == KEY_DC)
+      view.cursor(view.model.delete(pos))
+    else
+      cursor(view.model.insert(pos, c.toChar))
+
+    listen()
+  }
+
+  keypad(view.win, bf = true)
+  home()
+  listen()
   endwin
 
 }
