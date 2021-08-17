@@ -39,11 +39,17 @@ object Main extends App {
     val c = wgetch(view.win)
 
     if (c == KEY_HOME)
-      home()
+      view.model.start(pos) foreach cursor
+    else if (c == KEY_END)
+      view.model.end(pos) foreach cursor
+    else if (c == KEY_PPAGE)
+      view.model.up(pos, view.nlines) foreach cursor
+    else if (c == KEY_NPAGE)
+      view.model.down(pos, view.nlines) foreach cursor
     else if (c == KEY_UP)
-      view.model.up(pos) foreach cursor
+      view.model.up(pos, 1) foreach cursor
     else if (c == KEY_DOWN)
-      view.model.down(pos) foreach cursor
+      view.model.down(pos, 1) foreach cursor
     else if (c == KEY_LEFT)
       view.model.left(pos) foreach cursor
     else if (c == KEY_RIGHT) {
@@ -72,7 +78,7 @@ case class SegmentChange(line: Int, from: Int, count: Int, chars: String) extend
 case class LineChange(line: Int, from: Int, chars: String)                extends Event
 case class DocumentChange(line: Int)                                      extends Event
 
-class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begin_x: Int) {
+class TextView(val model: TextModel, val nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
   val win: WINDOW = newwin(nlines, ncols, begin_y, begin_x)
 
   model subscribe this
@@ -173,17 +179,30 @@ class TextModel {
     char
   }
 
-  def up(p: Pos): Option[Pos] = {
+  def up(p: Pos, n: Int): Option[Pos] = {
     val Pos(line, _) = p
+    val dist         = n min line
 
-    if (line > 0) Some(char2col(line - 1, col2char(p.copy(line = line - 1))))
+    if (dist > 0) Some(char2col(line - dist, col2char(p.copy(line = line - dist))))
     else None
   }
 
-  def down(p: Pos): Option[Pos] = {
+  def down(p: Pos, n: Int): Option[Pos] = {
     val Pos(line, _) = p
+    val dist         = n min (text.length - 1 - line)
 
-    if (line < text.length - 1) Some(char2col(line + 1, col2char(p.copy(line = line + 1))))
+    if (dist > 0) Some(char2col(line + dist, col2char(p.copy(line = line + dist))))
+    else None
+  }
+
+  def start(p: Pos): Option[Pos] =
+    if (p.col > 0) Some(p.copy(col = 0))
+    else None
+
+  def end(p: Pos): Option[Pos] = {
+    val endp = char2col(p.line, text(p.line).length)
+
+    if (p.col < endp.col) Some(endp)
     else None
   }
 
