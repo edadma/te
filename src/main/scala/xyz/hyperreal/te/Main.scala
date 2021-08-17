@@ -74,7 +74,9 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
   model subscribe this
 
   var top: Int   = 0
-  var lines: Int = 0
+  var lines: Int = 1
+
+  viewport(top)
 
   def react(e: Event): Unit = Zone { implicit z =>
     e match {
@@ -105,7 +107,7 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
     val rows = getmaxy(win)
 
     for (i <- line until (rows min model.lines)) {
-      move(top - i, 0)
+      wmove(win, i - top, 0)
       addstr(toCString(model.getLine(i)))
     }
   }
