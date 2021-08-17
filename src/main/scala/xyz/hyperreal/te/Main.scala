@@ -3,32 +3,47 @@ package xyz.hyperreal.te
 import xyz.hyperreal.ncurses.LibNCurses._
 import xyz.hyperreal.ncurses.LibNCursesHelpers._
 
+import java.nio.file.{Files, Paths}
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
-import scala.scalanative.unsafe.{Zone, toCString}
+import scala.scalanative.unsafe.{CInt, Zone, toCString}
 
 object Main extends App {
 
   initscr
-  cbreak
-  noecho
 
-  val testdoc =
+//  val init     = Files.readString(Paths.get("build.sbt"))
+//  val init = util.Using(io.Source.fromFile("build.sbt"))(_.mkString).get
+  val init =
     """
-      |one
-      |two
-      |three
-      |four
-      |five
-      |six
-      |seven
-      |eight
-      |nine
-      |ten
-      |""".trim.stripMargin
-
+      | 1
+      | 2
+      | 3
+      | 4
+      | 5
+      | 6
+      | 7
+      | 8
+      | 9
+      |10
+      |11
+      |12
+      |13
+      |14
+      |15
+      |16
+      |17
+      |18
+      |19
+      |20
+      |21
+      |22
+      |23
+      |24
+      |25
+      |""".stripMargin
+  val view     = new TextView(new TextModel(init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
   val HOME     = Pos(0, 0)
-  val view     = new TextView(new TextModel(testdoc), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
   var pos: Pos = _
 
   def home(): Unit = cursor(HOME)
@@ -78,7 +93,10 @@ object Main extends App {
     listen()
   }
 
+  cbreak
+  noecho
   keypad(view.win, bf = true)
+  scrollok(view.win, bf = true)
   home()
   listen()
   endwin
@@ -134,9 +152,32 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
   def visibleFrom(line: Int): Seq[Int] = line until model.lines intersect (top until top + height)
 
   def cursor(p: Pos): Unit = {
-    if (visibleLine(p.line)) {
-      wmove(win, p.line - top, p.col)
+    if (!visibleLine(p.line)) {
+      if (p.line < top && top - p.line < height) {
+        wscrl(win, -(top - p.line))
+
+        val oldtop = top
+
+        top = p.line
+        render(p.line until oldtop)
+      } else if (p.line >= top + height && p.line - (top + height) < height) {
+
+        val n = p.line - (top + height) + 1
+
+        wscrl(win, n)
+        top += n
+        render(p.line until p.line + n)
+      } else
+        viewport(p.line)
     }
+
+    wmove(win, p.line - top, p.col)
+  }
+
+  def bottom(x: Any): CInt = {
+    move(getmaxy(stdscr) - 1, 0)
+    Zone(implicit z => addstr(toCString(String.valueOf(x))))
+    refresh
   }
 
   def close(): Unit = {
@@ -291,3 +332,26 @@ class TextModel(init: String = null) {
   def getLine(line: Int): String = text(line).mkString
 
 }
+
+/*
+TODO: handle resizing in a nice way
+X window
+If an xterm is resized the contents on your text windows might be messed up. To handle this gracefully you should redraw all the stuff based on the new height and width of the screen. When resizing happens, your program is sent a SIGWINCH signal. You should catch this signal and do redrawing accordingly. Here is some hint.
+
+
+     #include <signal.h>
+     void* resizeHandler(int);
+
+     int main(void) {
+          ...
+          signal(SIGWINCH, resizeHandler);
+          ...
+     }
+
+     void* resizeHandler(int sig)
+     {
+          int nh, nw;
+          getmaxyx(stdscr, nh, nw);  /* get the new screen size */
+          ...
+     }
+ */
