@@ -84,12 +84,15 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
     e match {
       case DocumentChange(line) =>
         if (visible(line)) {
-          for (i <- line until (model.lines min (top + nlines))) {
+          val end = model.lines min (top + nlines)
+
+          for (i <- line until end) {
             wmove(win, i - top, 0)
             waddstr(win, toCString(model.getLine(i)))
             wclrtoeol(win)
           }
 
+          lines = end - line
           wclrtobot(win)
         }
       case LineChange(line, from, chars) =>
@@ -113,7 +116,7 @@ class TextView(val model: TextModel, nlines: Int, ncols: Int, begin_y: Int, begi
     }
   }
 
-  def visible(line: Int): Boolean = line >= top && line < top + lines
+  def visible(line: Int): Boolean = top <= line && line < top + nlines
 
   def cursor(p: Pos): Unit = {
     if (visible(p.line)) {
