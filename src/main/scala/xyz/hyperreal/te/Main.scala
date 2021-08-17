@@ -1,6 +1,7 @@
 package xyz.hyperreal.te
 
 import xyz.hyperreal.ncurses.LibNCurses._
+import xyz.hyperreal.ncurses.LibNCursesHelpers._
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
@@ -16,13 +17,14 @@ object Main extends App {
   val view     = new TextView(new TextModel, getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
   var pos: Pos = _
 
-  def home(): Unit = {
-    pos = HOME
-    view.cursor(HOME)
-  }
+  def home(): Unit = cursor(HOME)
 
   def cursor(p: Pos): Unit = {
     pos = p
+    move(getmaxy(stdscr) - 1, 0)
+    printw("%d:%d", p.line - view.top + 1, p.col + 1)
+    clrtoeol
+    refresh
     view.cursor(p)
   }
 
