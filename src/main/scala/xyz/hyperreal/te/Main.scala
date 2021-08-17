@@ -13,8 +13,22 @@ object Main extends App {
   cbreak
   noecho
 
+  val testdoc =
+    """
+      |one
+      |two
+      |three
+      |four
+      |five
+      |six
+      |seven
+      |eight
+      |nine
+      |ten
+      |""".trim.stripMargin
+
   val HOME     = Pos(0, 0)
-  val view     = new TextView(new TextModel, getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+  val view     = new TextView(new TextModel(testdoc), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
   var pos: Pos = _
 
   def home(): Unit = cursor(HOME)
@@ -43,9 +57,9 @@ object Main extends App {
     else if (c == KEY_END)
       view.model.end(pos) foreach cursor
     else if (c == KEY_PPAGE)
-      view.model.up(pos, view.nlines) foreach cursor
+      view.model.up(pos, view.height) foreach cursor
     else if (c == KEY_NPAGE)
-      view.model.down(pos, view.nlines) foreach cursor
+      view.model.down(pos, view.height) foreach cursor
     else if (c == KEY_UP)
       view.model.up(pos, 1) foreach cursor
     else if (c == KEY_DOWN)
@@ -78,56 +92,49 @@ case class SegmentChange(line: Int, from: Int, count: Int, chars: String) extend
 case class LineChange(line: Int, from: Int, chars: String)                extends Event
 case class DocumentChange(line: Int)                                      extends Event
 
-class TextView(val model: TextModel, val nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
+class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
   val win: WINDOW = newwin(nlines, ncols, begin_y, begin_x)
 
   model subscribe this
 
-  var top: Int   = 0
-  var lines: Int = 1
+  var top: Int = _
 
-  viewport(top)
+  viewport(0)
 
   def react(e: Event): Unit = Zone { implicit z =>
     e match {
-      case DocumentChange(line) =>
-        if (visible(line)) {
-          val end = model.lines min (top + nlines)
-
-          for (i <- line until end) {
-            wmove(win, i - top, 0)
-            waddstr(win, toCString(model.getLine(i)))
-            wclrtoeol(win)
-          }
-
-          lines = end - line
-          wclrtobot(win)
-        }
+      case DocumentChange(line) => render(visibleFrom(line))
       case LineChange(line, from, chars) =>
-        if (visible(line)) {
-          wmove(win, line - top, from)
-          waddstr(win, toCString(chars))
-          wclrtoeol(win)
-        }
-      case SegmentChange(line, from, count, chars) =>
+        if (visibleLine(line))
+          render(line, from, chars)
+      //case SegmentChange(line, from, count, chars) =>
     }
   }
 
-  def viewport(line: Int): Unit = Zone { implicit z =>
-    top = line
-
-    val rows = getmaxy(win)
-
-    for (i <- line until (rows min model.lines)) {
-      wmove(win, i - top, 0)
-      waddstr(win, toCString(model.getLine(i)))
-    }
+  def viewport(from: Int): Unit = {
+    top = from
+    render(from until ((from + height) min model.lines))
+    wclrtobot(win)
   }
 
-  def visible(line: Int): Boolean = top <= line && line < top + nlines
+  def render(line: Int, from: Int, chars: String): Unit = Zone { implicit z =>
+    wmove(win, line - top, from)
+    waddstr(win, toCString(chars))
+    wclrtoeol(win)
+  }
+
+  def render(range: Seq[Int]): Unit =
+    for (i <- range)
+      render(i, 0, model.getLine(i))
+
+  def height: Int = getmaxy(win)
+
+  def visibleLine(line: Int): Boolean = top <= line && line < top + height
+
+  def visibleFrom(line: Int): Seq[Int] = line until model.lines intersect (top until top + height)
 
   def cursor(p: Pos): Unit = {
-    if (visible(p.line)) {
+    if (visibleLine(p.line)) {
       wmove(win, p.line - top, p.col)
     }
   }
@@ -138,10 +145,15 @@ class TextView(val model: TextModel, val nlines: Int, val ncols: Int, begin_y: I
   }
 }
 
-class TextModel {
+class TextModel(init: String = null) {
   val text = new ArrayBuffer[ArrayBuffer[Char]]()
 
-  text += new ArrayBuffer[Char]
+  if (init eq null)
+    text += new ArrayBuffer[Char]
+  else {
+    for (l <- io.Source.fromString(init).getLines())
+      text += (ArrayBuffer[Char]() ++ l)
+  }
 
   val subscribers = new ArrayBuffer[TextView]
 
