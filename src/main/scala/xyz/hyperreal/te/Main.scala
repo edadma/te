@@ -41,7 +41,7 @@ object Main extends App {
       |23
       |24
       |25
-      |""".stripMargin
+      |""".trim.stripMargin
   val view     = new TextView(new TextModel(init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
   val HOME     = Pos(0, 0)
   var pos: Pos = _
@@ -154,21 +154,26 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
   def cursor(p: Pos): Unit = {
     if (!visibleLine(p.line)) {
       if (p.line < top && top - p.line < height) {
-        wscrl(win, -(top - p.line))
+        val n = top - p.line
+
+        bottom(s"scroll up: $n, height: $height")
+        wscrl(win, -n)
 
         val oldtop = top
 
         top = p.line
         render(p.line until oldtop)
       } else if (p.line >= top + height && p.line - (top + height) < height) {
-
         val n = p.line - (top + height) + 1
 
+        bottom(s"scroll down: $n, height: $height")
         wscrl(win, n)
         top += n
         render(p.line until p.line + n)
-      } else
+      } else {
+        bottom("viewport")
         viewport(p.line)
+      }
     }
 
     wmove(win, p.line - top, p.col)
