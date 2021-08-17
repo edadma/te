@@ -42,6 +42,8 @@ object Main extends App {
       home()
     else if (c == KEY_UP)
       view.model.up(pos) foreach cursor
+    else if (c == KEY_DOWN)
+      view.model.down(pos) foreach cursor
     else if (c == KEY_LEFT)
       view.model.left(pos) foreach cursor
     else if (c == KEY_RIGHT) {
@@ -137,7 +139,7 @@ class TextModel {
 
   val subscribers = new ArrayBuffer[TextView]
 
-  var exptabs = true
+  var exptabs = false
   var tabs    = 2
 
   def subscribe(view: TextView): Unit = subscribers += view
@@ -175,6 +177,13 @@ class TextModel {
     val Pos(line, _) = p
 
     if (line > 0) Some(char2col(line - 1, col2char(p.copy(line = line - 1))))
+    else None
+  }
+
+  def down(p: Pos): Option[Pos] = {
+    val Pos(line, _) = p
+
+    if (line < text.length - 1) Some(char2col(line + 1, col2char(p.copy(line = line + 1))))
     else None
   }
 
@@ -223,10 +232,10 @@ class TextModel {
     val Pos(line, col) = p
 
     c match {
-      case '\t' if exptabs =>
+      case '\t' =>
         val spaces = tabs - col % tabs
 
-        text(line).insertAll(char, " " * spaces)
+        text(line).insertAll(char, if (exptabs) " " * spaces else "\t")
         event(LineChange(line, col, slice(line, char)))
         Pos(line, col + spaces)
       case '\n' =>
