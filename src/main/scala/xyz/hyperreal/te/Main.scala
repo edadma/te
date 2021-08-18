@@ -97,30 +97,6 @@ object Main extends App {
       view.cursor(p)
     }
 
-//    @tailrec
-//    def listen(): Unit = {
-//      fromCString(keyname(wgetch(view.win))) match {
-//        case "^C"            => return
-//        case "KEY_HOME"      => view.model.startOfLine(pos) foreach cursor
-//        case "KEY_END"       => view.model.endOfLine(pos) foreach cursor
-//        case "kHOM5"         => home()
-//        case "kEND5"         => cursor(view.model.end)
-//        case "KEY_PPAGE"     => view.model.up(pos, view.height) foreach cursor
-//        case "KEY_NPAGE"     => view.model.down(pos, view.height) foreach cursor
-//        case "KEY_UP"        => view.model.up(pos, 1) foreach cursor
-//        case "KEY_DOWN"      => view.model.down(pos, 1) foreach cursor
-//        case "KEY_LEFT"      => view.model.left(pos) foreach cursor
-//        case "KEY_RIGHT"     => view.model.right(pos) foreach cursor
-//        case "KEY_BACKSPACE" => view.model.backspace(pos) foreach cursor
-//        case "KEY_DC"        => view.cursor(view.model.delete(pos))
-//        case "^J"            => cursor(view.model.insertBreak(pos))
-//        case "^I"            => cursor(view.model.insertTab(pos))
-//        case s               => cursor(view.model.insert(pos, s.head))
-//      }
-//
-//      listen()
-//    }
-
     raw
     noecho
     keypad(view.win, bf = true)
@@ -140,35 +116,35 @@ object Main extends App {
 
         view.cursor(pos)
       case SegmentChangeEvent(views, line, from, count, chars) =>
-      case KeyEvent("^C") =>
-        endwin
-        sys.exit()
-      case KeyEvent("KEY_HOME")      => view.model.startOfLine(pos) foreach cursor
-      case KeyEvent("KEY_END")       => view.model.endOfLine(pos) foreach cursor
-      case KeyEvent("kHOM5")         => home()
-      case KeyEvent("kEND5")         => cursor(view.model.end)
-      case KeyEvent("KEY_PPAGE")     => view.model.up(pos, view.height) foreach cursor
-      case KeyEvent("KEY_NPAGE")     => view.model.down(pos, view.height) foreach cursor
-      case KeyEvent("KEY_UP")        => view.model.up(pos, 1) foreach cursor
-      case KeyEvent("KEY_DOWN")      => view.model.down(pos, 1) foreach cursor
-      case KeyEvent("KEY_LEFT")      => view.model.left(pos) foreach cursor
-      case KeyEvent("KEY_RIGHT")     => view.model.right(pos) foreach cursor
-      case KeyEvent("KEY_BACKSPACE") => view.model.backspace(pos) foreach cursor
-      case KeyEvent("KEY_DC")        => view.cursor(view.model.delete(pos))
-      case KeyEvent("^J")            => cursor(view.model.insertBreak(pos))
-      case KeyEvent("^I")            => cursor(view.model.insertTab(pos))
-      case KeyEvent(s)               => cursor(view.model.insert(pos, s.head))
     }
 
     Event phase {
       val k = wgetch(view.win)
 
       if (k != ERR)
-        Event(KeyEvent(fromCString(keyname(k))))
+        fromCString(keyname(k)) match {
+          case "^C"            => Event.stop() //todo: remove this case
+          case "KEY_HOME"      => view.model.startOfLine(pos) foreach cursor
+          case "KEY_END"       => view.model.endOfLine(pos) foreach cursor
+          case "kHOM5"         => home()
+          case "kEND5"         => cursor(view.model.end)
+          case "KEY_PPAGE"     => view.model.up(pos, view.height) foreach cursor
+          case "KEY_NPAGE"     => view.model.down(pos, view.height) foreach cursor
+          case "KEY_UP"        => view.model.up(pos, 1) foreach cursor
+          case "KEY_DOWN"      => view.model.down(pos, 1) foreach cursor
+          case "KEY_LEFT"      => view.model.left(pos) foreach cursor
+          case "KEY_RIGHT"     => view.model.right(pos) foreach cursor
+          case "KEY_BACKSPACE" => view.model.backspace(pos) foreach cursor
+          case "KEY_DC"        => view.cursor(view.model.delete(pos))
+          case "^J"            => cursor(view.model.insertBreak(pos))
+          case "^I"            => cursor(view.model.insertTab(pos))
+          case s               => cursor(view.model.insert(pos, s.head))
+        }
     }
 
     home()
     Event.start()
+    endwin
   }
 
 }

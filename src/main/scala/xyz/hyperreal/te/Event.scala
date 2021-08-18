@@ -9,17 +9,19 @@ object Event {
   val events: mutable.Queue[Event]  = mutable.Queue()
   val loop: ArrayBuffer[() => Unit] = ArrayBuffer()
 
+  var running: Boolean       = _
   var handler: Event => Unit = _
 
   phase {
     get foreach handler
   }
 
-  @tailrec
   def start(): Unit = {
-    loop foreach (_())
-    start()
+    running = true
+    while (running) loop foreach (_())
   }
+
+  def stop(): Unit = running = false
 
   def apply(e: Event): Unit = event(e)
 
@@ -37,4 +39,3 @@ trait Event
 case class SegmentChangeEvent(views: Seq[TextView], line: Int, from: Int, count: Int, chars: String) extends Event
 case class LineChangeEvent(views: Seq[TextView], line: Int, from: Int, chars: String)                extends Event
 case class DocumentChangeEvent(views: Seq[TextView], line: Int)                                      extends Event
-case class KeyEvent(key: String)                                                                     extends Event
