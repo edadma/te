@@ -39,3 +39,5 @@ case class SegmentChangeEvent(views: Seq[TextView], line: Int, from: Int, count:
 case class LineChangeEvent(views: Seq[TextView], line: Int, from: Int, chars: String)                extends Event
 case class DocumentChangeEvent(views: Seq[TextView], line: Int)                                      extends Event
 case class DocumentLoadEvent(views: Seq[TextView])                                                   extends Event
+case class KeyEvent(key: String)                                                                     extends Event
+case class MouseEvent(e: String)                                                                     extends Event
