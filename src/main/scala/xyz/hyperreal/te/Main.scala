@@ -1,105 +1,137 @@
 package xyz.hyperreal.te
 
+import scopt.OParser
 import xyz.hyperreal.ncurses.LibNCurses._
 import xyz.hyperreal.ncurses.LibNCursesHelpers._
 
+import java.io.File
 import java.nio.file.{Files, Paths}
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.scalanative.unsafe.{CInt, Zone, toCString}
 
 object Main extends App {
+  case class Config(file: File)
 
-  initscr
+  val builder = OParser.builder[Config]
 
-//  val init     = Files.readString(Paths.get("build.sbt"))
-//  val init = util.Using(io.Source.fromFile("build.sbt"))(_.mkString).get
-  val init =
-    """
-      | 1
-      | 2
-      | 3
-      | 4
-      | 5
-      | 6
-      | 7
-      | 8
-      | 9
-      |10
-      |11
-      |12
-      |13
-      |14
-      |15
-      |16
-      |17
-      |18
-      |19
-      |20
-      |21
-      |22
-      |23
-      |24
-      |25
-      |""".trim.stripMargin
-  val view     = new TextView(new TextModel(init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
-  val HOME     = Pos(0, 0)
-  var pos: Pos = _
+  val parser = {
+    import builder._
 
-  def home(): Unit = cursor(HOME)
-
-  def cursor(p: Pos): Unit = Zone { implicit z =>
-    pos = p
-    move(getmaxy(stdscr) - 1, 0)
-    wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
-
-    val status = s"${p.line + 1}:${p.col + 1}  LF  UTF-8  2-spaces"
-
-    clrtoeol
-    move(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length)
-    addstr(toCString(status))
-    wbkgdset(stdscr, ' ')
-    refresh
-    view.cursor(p)
+    OParser.sequence(
+      programName("te"),
+      head("te", "v0.1.0"),
+      help('h', "help").text("prints this usage text"),
+//      opt[Unit]('v', "verbose")
+//        .action((_, c) => c.copy(verbose = true))
+//        .text("print internal actions"),
+      version('v', "version").text("prints the version"),
+      arg[File]("<file>")
+        .action((f, c) => c.copy(file = f))
+        .validate(f =>
+          if (f.exists && f.isFile && f.canRead) success
+          else failure("<file> must be a regular file that is readable"))
+        .text("path to text file to open")
+    )
   }
 
-  @tailrec
-  def listen(): Unit = {
-    val c = wgetch(view.win)
+  OParser.parse(parser, args, Config(null)) match {
+    case Some(config) => app(config.file)
+    case _            =>
+  }
 
-    if (c == KEY_HOME)
-      view.model.start(pos) foreach cursor
-    else if (c == KEY_END)
-      view.model.end(pos) foreach cursor
-    else if (c == KEY_PPAGE)
-      view.model.up(pos, view.height) foreach cursor
-    else if (c == KEY_NPAGE)
-      view.model.down(pos, view.height) foreach cursor
-    else if (c == KEY_UP)
-      view.model.up(pos, 1) foreach cursor
-    else if (c == KEY_DOWN)
-      view.model.down(pos, 1) foreach cursor
-    else if (c == KEY_LEFT)
-      view.model.left(pos) foreach cursor
-    else if (c == KEY_RIGHT) {
-      view.model.right(pos) foreach cursor
-    } else if (c == KEY_BACKSPACE) {
-      view.model.backspace(pos) foreach cursor
-    } else if (c == KEY_DC)
-      view.cursor(view.model.delete(pos))
-    else
-      cursor(view.model.insert(pos, c.toChar))
+  def app(file: File): Unit = {
+    initscr
 
+    //  val init     = Files.readString(Paths.get("build.sbt"))
+    val init = util.Using(io.Source.fromFile(file.getPath))(_.mkString).get
+//    val init =
+//      """
+//      | 1
+//      | 2
+//      | 3
+//      | 4
+//      | 5
+//      | 6
+//      | 7
+//      | 8
+//      | 9
+//      |10
+//      |11
+//      |12
+//      |13
+//      |14
+//      |15
+//      |16
+//      |17
+//      |18
+//      |19
+//      |20
+//      |21
+//      |22
+//      |23
+//      |24
+//      |25
+//      |""".trim.stripMargin
+    val view     = new TextView(new TextModel(init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    val HOME     = Pos(0, 0)
+    var pos: Pos = null
+
+    def home(): Unit = cursor(HOME)
+
+    def cursor(p: Pos): Unit = Zone { implicit z =>
+      pos = p
+      move(getmaxy(stdscr) - 1, 0)
+      wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
+
+      val status = s"${p.line + 1}:${p.col + 1}  LF  UTF-8  2-spaces"
+
+      clrtoeol
+      move(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length)
+      addstr(toCString(status))
+      wbkgdset(stdscr, ' ')
+      refresh
+      view.cursor(p)
+    }
+
+    @tailrec
+    def listen(): Unit = {
+      val c = wgetch(view.win)
+
+      if (c == KEY_HOME)
+        view.model.start(pos) foreach cursor
+      else if (c == KEY_END)
+        view.model.end(pos) foreach cursor
+      else if (c == KEY_PPAGE)
+        view.model.up(pos, view.height) foreach cursor
+      else if (c == KEY_NPAGE)
+        view.model.down(pos, view.height) foreach cursor
+      else if (c == KEY_UP)
+        view.model.up(pos, 1) foreach cursor
+      else if (c == KEY_DOWN)
+        view.model.down(pos, 1) foreach cursor
+      else if (c == KEY_LEFT)
+        view.model.left(pos) foreach cursor
+      else if (c == KEY_RIGHT) {
+        view.model.right(pos) foreach cursor
+      } else if (c == KEY_BACKSPACE) {
+        view.model.backspace(pos) foreach cursor
+      } else if (c == KEY_DC)
+        view.cursor(view.model.delete(pos))
+      else
+        cursor(view.model.insert(pos, c.toChar))
+
+      listen()
+    }
+
+    cbreak
+    noecho
+    keypad(view.win, bf = true)
+    scrollok(view.win, bf = true)
+    home()
     listen()
+    endwin
   }
-
-  cbreak
-  noecho
-  keypad(view.win, bf = true)
-  scrollok(view.win, bf = true)
-  home()
-  listen()
-  endwin
 
 }
 
@@ -156,7 +188,7 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
       if (p.line < top && top - p.line < height) {
         val n = top - p.line
 
-        bottom(s"scroll up: $n, height: $height")
+//        bottom(s"scroll up: $n, height: $height")
         wscrl(win, -n)
 
         val oldtop = top
@@ -166,7 +198,7 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
       } else if (p.line >= top + height && p.line - (top + height) < height) {
         val n = p.line - (top + height) + 1
 
-        bottom(s"scroll down: $n, height: $height")
+//        bottom(s"scroll down: $n, height: $height")
         wscrl(win, n)
         top += n
         render(p.line until p.line + n)
@@ -194,7 +226,7 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
 class TextModel(init: String = null) {
   val text = new ArrayBuffer[ArrayBuffer[Char]]()
 
-  if (init eq null)
+  if (init == null)
     text += new ArrayBuffer[Char]
   else {
     for (l <- io.Source.fromString(init).getLines())
