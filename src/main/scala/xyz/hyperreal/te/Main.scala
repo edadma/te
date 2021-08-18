@@ -97,12 +97,6 @@ object Main extends App {
       view.cursor(p)
     }
 
-    raw
-    noecho
-    keypad(view.win, bf = true)
-    scrollok(view.win, bf = true)
-    nodelay(view.win, bf = true)
-
     Event.handler = {
       case DocumentLoadEvent(views) =>
         views foreach (_.viewport(0))
@@ -145,6 +139,11 @@ object Main extends App {
         }
     }
 
+    raw
+    noecho
+    keypad(view.win, bf = true)
+    scrollok(view.win, bf = true)
+    nodelay(view.win, bf = true)
     Event(DocumentLoadEvent(Seq(view)))
     Event.start()
     endwin
