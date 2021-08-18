@@ -10,6 +10,9 @@ class TextModel(path: String, init: String = null) {
   else {
     for (l <- io.Source.fromString(init).getLines())
       text += (ArrayBuffer[Char]() ++ l)
+
+    if (text.isEmpty)
+      text += new ArrayBuffer[Char]
   }
 
   val subscribers = new ArrayBuffer[TextView]
@@ -64,16 +67,18 @@ class TextModel(path: String, init: String = null) {
     else None
   }
 
-  def start(p: Pos): Option[Pos] =
+  def startOfLine(p: Pos): Option[Pos] =
     if (p.col > 0) Some(p.copy(col = 0))
     else None
 
-  def end(p: Pos): Option[Pos] = {
+  def endOfLine(p: Pos): Option[Pos] = {
     val endp = char2col(p.line, text(p.line).length)
 
     if (p.col < endp.col) Some(endp)
     else None
   }
+
+  def end: Pos = char2col(text.length - 1, text(text.length - 1).length)
 
   def left(p: Pos): Option[Pos] = {
     val char         = col2char(p)

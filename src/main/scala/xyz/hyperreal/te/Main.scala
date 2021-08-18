@@ -101,30 +101,23 @@ object Main extends App {
     @tailrec
     def listen(): Unit = {
       fromCString(keyname(wgetch(view.win))) match {
-        case "^C"       => return
-        case "KEY_HOME" => view.model.start(pos) foreach cursor
-        case "KEY_END"  => view.model.end(pos) foreach cursor
-        case "^J"       => cursor(view.model.insertBreak(pos))
-        case "^I"       => cursor(view.model.insertTab(pos))
-        case s          => cursor(view.model.insert(pos, s.head))
+        case "^C"            => return
+        case "KEY_HOME"      => view.model.startOfLine(pos) foreach cursor
+        case "KEY_END"       => view.model.endOfLine(pos) foreach cursor
+        case "kHOM5"         => home()
+        case "kEND5"         => cursor(view.model.end)
+        case "KEY_PPAGE"     => view.model.up(pos, view.height) foreach cursor
+        case "KEY_NPAGE"     => view.model.down(pos, view.height) foreach cursor
+        case "KEY_UP"        => view.model.up(pos, 1) foreach cursor
+        case "KEY_DOWN"      => view.model.down(pos, 1) foreach cursor
+        case "KEY_LEFT"      => view.model.left(pos) foreach cursor
+        case "KEY_RIGHT"     => view.model.right(pos) foreach cursor
+        case "KEY_BACKSPACE" => view.model.backspace(pos) foreach cursor
+        case "KEY_DC"        => view.cursor(view.model.delete(pos))
+        case "^J"            => cursor(view.model.insertBreak(pos))
+        case "^I"            => cursor(view.model.insertTab(pos))
+        case s               => cursor(view.model.insert(pos, s.head))
       }
-
-//      if (c == KEY_PPAGE)
-//        view.model.up(pos, view.height) foreach cursor
-//      else if (c == KEY_NPAGE)
-//        view.model.down(pos, view.height) foreach cursor
-//      else if (c == KEY_UP)
-//        view.model.up(pos, 1) foreach cursor
-//      else if (c == KEY_DOWN)
-//        view.model.down(pos, 1) foreach cursor
-//      else if (c == KEY_LEFT)
-//        view.model.left(pos) foreach cursor
-//      else if (c == KEY_RIGHT) {
-//        view.model.right(pos) foreach cursor
-//      } else if (c == KEY_BACKSPACE) {
-//        view.model.backspace(pos) foreach cursor
-//      } else if (c == KEY_DC)
-//        view.cursor(view.model.delete(pos))
 
       listen()
     }
