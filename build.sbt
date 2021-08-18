@@ -33,6 +33,8 @@ resolvers += Resolver.githubPackages("edadma")
 
 Compile / mainClass := Some("xyz.hyperreal." + name.value.replace('-', '_') + ".Main")
 
+//nativeLinkingOptions += "-v"
+
 licenses := Seq("ISC" -> url("https://opensource.org/licenses/ISC"))
 
 homepage := Some(url("https://github.com/edadma/" + name.value))

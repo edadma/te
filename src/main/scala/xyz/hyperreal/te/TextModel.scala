@@ -1,5 +1,6 @@
 package xyz.hyperreal.te
 
+import java.io.PrintWriter
 import javax.management.Notification
 import scala.collection.mutable.ArrayBuffer
 
@@ -134,6 +135,12 @@ class TextModel(val path: String, init: String = null) {
   }
 
   def save(): Unit = {
+    val w = new PrintWriter(path)
+
+    for (l <- text)
+      w.println(l.mkString)
+
+    w.close()
     Event(NotificationEvent(s""""$path" saved"""))
   }
 
