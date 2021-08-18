@@ -74,15 +74,21 @@ object Main extends App {
 //      |24
 //      |25
 //      |""".trim.stripMargin
-    val view     = new TextView(new TextModel(file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
-    var pos: Pos = null
+    val view                  = new TextView(new TextModel(file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    var pos: Pos              = null
+    var notification: String  = ""
+    var removalTimer: Timeout = null
 
     def home(): Unit = cursor(Pos(0, 0))
 
     def cursor(p: Pos): Unit = {
       pos = p
       status()
-      view.cursor(p)
+    }
+
+    def notify(text: String): Unit = {
+      notification = text
+      status()
     }
 
     def status(): Unit = Zone { implicit z =>
@@ -92,10 +98,13 @@ object Main extends App {
       val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2-spaces"
 
       clrtoeol
+      move(getmaxy(stdscr) - 1, 0)
+      addstr(toCString(notification))
       move(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length)
       addstr(toCString(status))
       wbkgdset(stdscr, ' ')
       refresh
+      view.cursor(pos)
     }
 
     Event.handler = {
@@ -134,8 +143,11 @@ object Main extends App {
       case KeyEvent(k) if k.startsWith("^") && k.length > 1    =>
       case KeyEvent(s)                                         => cursor(view.model.insert(pos, s.head))
       case NotificationEvent(text) =>
-        message(text)
-        view.cursor(pos)
+        if (removalTimer ne null)
+          Event.cancel(removalTimer)
+
+        notify(text)
+        removalTimer = Event.timeout(5 * 1000) { notify("") }
     }
 
     Event phase {
