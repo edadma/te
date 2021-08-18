@@ -9,9 +9,9 @@ object Event {
   val timers: ArrayBuffer[Timeout]    = ArrayBuffer()
   val phases: ArrayBuffer[() => Unit] = ArrayBuffer()
 
-  var running: Boolean       = _
-  var handler: Event => Unit = _
-  var now: Long              = _
+  var running: Boolean                                     = _
+  var reactions: ArrayBuffer[PartialFunction[Event, Unit]] = ArrayBuffer()
+  var now: Long                                            = _
 
   def start(): Unit = {
     running = true
@@ -19,7 +19,12 @@ object Event {
     while (running) {
       now = System.currentTimeMillis()
 
-      get foreach handler
+      get foreach { e =>
+        reactions foreach { r =>
+          if (r isDefinedAt e)
+            r(e)
+        }
+      }
 
       timers.toList foreach {
         case t @ Timeout(expires, action) =>

@@ -107,7 +107,7 @@ object Main extends App {
       view.cursor(pos)
     }
 
-    Event.handler = {
+    Event.reactions += {
       case DocumentLoadEvent(views) =>
         views foreach (_.viewport(0))
         home()
