@@ -19,7 +19,7 @@ object Main extends App {
 
     OParser.sequence(
       programName("te"),
-      head("te", "v0.1.0"),
+      head("Terminal Editor", "v0.1.0"),
       help('h', "help").text("prints this usage text"),
 //      opt[Unit]('v', "verbose")
 //        .action((_, c) => c.copy(verbose = true))
