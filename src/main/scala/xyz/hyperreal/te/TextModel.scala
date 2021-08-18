@@ -24,8 +24,6 @@ class TextModel(path: String, init: String = null) {
 
   def unsubscribe(view: TextView): Unit = subscribers -= view
 
-  def event(e: Event): Unit = subscribers foreach (_ react e)
-
   def lines: Int = text.length
 
   def char2col(line: Int, char: Int): Pos = {
@@ -100,17 +98,19 @@ class TextModel(path: String, init: String = null) {
 
   def backspace(p: Pos): Option[Pos] = left(p) map delete
 
+  def views: List[TextView] = subscribers.toList
+
   def delete(p: Pos): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
 
     if (char < text(line).length) {
       text(line).remove(char)
-      event(LineChange(line, col, slice(line, char)))
+      Event(LineChangeEvent(views, line, col, slice(line, char)))
     } else if (line < text.length - 1) {
       text(line).addAll(text(line + 1))
       text.remove(line + 1)
-      event(DocumentChange(line))
+      Event(DocumentChangeEvent(views, line))
     }
 
     p
@@ -126,7 +126,7 @@ class TextModel(path: String, init: String = null) {
     val spaces         = tabs - col % tabs
 
     text(line).insertAll(char, if (exptabs) " " * spaces else "\t")
-    event(LineChange(line, col, slice(line, char)))
+    Event(LineChangeEvent(views, line, col, slice(line, char)))
     Pos(line, col + spaces)
   }
 
@@ -140,9 +140,9 @@ class TextModel(path: String, init: String = null) {
 
     if (text(line).length > char) {
       text(line).remove(char, text(line).length - char)
-      event(DocumentChange(line))
+      Event(DocumentChangeEvent(views, line))
     } else
-      event(DocumentChange(line + 1))
+      Event(DocumentChangeEvent(views, line + 1))
 
     Pos(line + 1, 0)
   }
@@ -152,7 +152,7 @@ class TextModel(path: String, init: String = null) {
     val Pos(line, col) = p
 
     text(line).insert(char, c)
-    event(LineChange(line, col, slice(line, char)))
+    Event(LineChangeEvent(views, line, col, slice(line, char)))
     Pos(line, col + 1)
   }
 

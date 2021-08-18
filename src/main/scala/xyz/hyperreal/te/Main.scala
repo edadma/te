@@ -78,10 +78,9 @@ object Main extends App {
 //      |25
 //      |""".trim.stripMargin
     val view     = new TextView(new TextModel(file.getPath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
-    val HOME     = Pos(0, 0)
     var pos: Pos = null
 
-    def home(): Unit = cursor(HOME)
+    def home(): Unit = cursor(Pos(0, 0))
 
     def cursor(p: Pos): Unit = Zone { implicit z =>
       pos = p
@@ -98,37 +97,78 @@ object Main extends App {
       view.cursor(p)
     }
 
-    @tailrec
-    def listen(): Unit = {
-      fromCString(keyname(wgetch(view.win))) match {
-        case "^C"            => return
-        case "KEY_HOME"      => view.model.startOfLine(pos) foreach cursor
-        case "KEY_END"       => view.model.endOfLine(pos) foreach cursor
-        case "kHOM5"         => home()
-        case "kEND5"         => cursor(view.model.end)
-        case "KEY_PPAGE"     => view.model.up(pos, view.height) foreach cursor
-        case "KEY_NPAGE"     => view.model.down(pos, view.height) foreach cursor
-        case "KEY_UP"        => view.model.up(pos, 1) foreach cursor
-        case "KEY_DOWN"      => view.model.down(pos, 1) foreach cursor
-        case "KEY_LEFT"      => view.model.left(pos) foreach cursor
-        case "KEY_RIGHT"     => view.model.right(pos) foreach cursor
-        case "KEY_BACKSPACE" => view.model.backspace(pos) foreach cursor
-        case "KEY_DC"        => view.cursor(view.model.delete(pos))
-        case "^J"            => cursor(view.model.insertBreak(pos))
-        case "^I"            => cursor(view.model.insertTab(pos))
-        case s               => cursor(view.model.insert(pos, s.head))
-      }
-
-      listen()
-    }
+//    @tailrec
+//    def listen(): Unit = {
+//      fromCString(keyname(wgetch(view.win))) match {
+//        case "^C"            => return
+//        case "KEY_HOME"      => view.model.startOfLine(pos) foreach cursor
+//        case "KEY_END"       => view.model.endOfLine(pos) foreach cursor
+//        case "kHOM5"         => home()
+//        case "kEND5"         => cursor(view.model.end)
+//        case "KEY_PPAGE"     => view.model.up(pos, view.height) foreach cursor
+//        case "KEY_NPAGE"     => view.model.down(pos, view.height) foreach cursor
+//        case "KEY_UP"        => view.model.up(pos, 1) foreach cursor
+//        case "KEY_DOWN"      => view.model.down(pos, 1) foreach cursor
+//        case "KEY_LEFT"      => view.model.left(pos) foreach cursor
+//        case "KEY_RIGHT"     => view.model.right(pos) foreach cursor
+//        case "KEY_BACKSPACE" => view.model.backspace(pos) foreach cursor
+//        case "KEY_DC"        => view.cursor(view.model.delete(pos))
+//        case "^J"            => cursor(view.model.insertBreak(pos))
+//        case "^I"            => cursor(view.model.insertTab(pos))
+//        case s               => cursor(view.model.insert(pos, s.head))
+//      }
+//
+//      listen()
+//    }
 
     raw
     noecho
     keypad(view.win, bf = true)
     scrollok(view.win, bf = true)
+    nodelay(view.win, bf = true)
+
+    Event.handler = {
+      case DocumentChangeEvent(views, line) =>
+        for (v <- views)
+          v.render(v.visibleFrom(line))
+
+        view.cursor(pos)
+      case LineChangeEvent(views, line, from, chars) =>
+        for (v <- views)
+          if (v.visibleLine(line))
+            v.render(line, from, chars)
+
+        view.cursor(pos)
+      case SegmentChangeEvent(views, line, from, count, chars) =>
+      case KeyEvent("^C") =>
+        endwin
+        sys.exit()
+      case KeyEvent("KEY_HOME")      => view.model.startOfLine(pos) foreach cursor
+      case KeyEvent("KEY_END")       => view.model.endOfLine(pos) foreach cursor
+      case KeyEvent("kHOM5")         => home()
+      case KeyEvent("kEND5")         => cursor(view.model.end)
+      case KeyEvent("KEY_PPAGE")     => view.model.up(pos, view.height) foreach cursor
+      case KeyEvent("KEY_NPAGE")     => view.model.down(pos, view.height) foreach cursor
+      case KeyEvent("KEY_UP")        => view.model.up(pos, 1) foreach cursor
+      case KeyEvent("KEY_DOWN")      => view.model.down(pos, 1) foreach cursor
+      case KeyEvent("KEY_LEFT")      => view.model.left(pos) foreach cursor
+      case KeyEvent("KEY_RIGHT")     => view.model.right(pos) foreach cursor
+      case KeyEvent("KEY_BACKSPACE") => view.model.backspace(pos) foreach cursor
+      case KeyEvent("KEY_DC")        => view.cursor(view.model.delete(pos))
+      case KeyEvent("^J")            => cursor(view.model.insertBreak(pos))
+      case KeyEvent("^I")            => cursor(view.model.insertTab(pos))
+      case KeyEvent(s)               => cursor(view.model.insert(pos, s.head))
+    }
+
+    Event phase {
+      val k = wgetch(view.win)
+
+      if (k != ERR)
+        Event(KeyEvent(fromCString(keyname(k))))
+    }
+
     home()
-    listen()
-    endwin
+    Event.start()
   }
 
 }

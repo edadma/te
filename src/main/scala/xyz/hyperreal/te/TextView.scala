@@ -13,16 +13,6 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
 
   viewport(0)
 
-  def react(e: Event): Unit = Zone { implicit z =>
-    e match {
-      case DocumentChange(line) => render(visibleFrom(line))
-      case LineChange(line, from, chars) =>
-        if (visibleLine(line))
-          render(line, from, chars)
-      //case SegmentChange(line, from, count, chars) =>
-    }
-  }
-
   def viewport(from: Int): Unit = {
     top = from
     render(from until ((from + height) min model.lines))

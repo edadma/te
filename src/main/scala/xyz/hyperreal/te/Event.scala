@@ -1,6 +1,40 @@
 package xyz.hyperreal.te
 
+import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
+object Event {
+
+  val events: mutable.Queue[Event]  = mutable.Queue()
+  val loop: ArrayBuffer[() => Unit] = ArrayBuffer()
+
+  var handler: Event => Unit = _
+
+  phase {
+    get foreach handler
+  }
+
+  @tailrec
+  def start(): Unit = {
+    loop foreach (_())
+    start()
+  }
+
+  def apply(e: Event): Unit = event(e)
+
+  def phase(p: => Unit): Unit = loop += (() => p)
+
+  def event(e: Event): Unit = events enqueue e
+
+  def get: Option[Event] =
+    if (events nonEmpty) Some(events.dequeue())
+    else None
+
+}
+
 trait Event
-case class SegmentChange(line: Int, from: Int, count: Int, chars: String) extends Event
-case class LineChange(line: Int, from: Int, chars: String)                extends Event
-case class DocumentChange(line: Int)                                      extends Event
+case class SegmentChangeEvent(views: Seq[TextView], line: Int, from: Int, count: Int, chars: String) extends Event
+case class LineChangeEvent(views: Seq[TextView], line: Int, from: Int, chars: String)                extends Event
+case class DocumentChangeEvent(views: Seq[TextView], line: Int)                                      extends Event
+case class KeyEvent(key: String)                                                                     extends Event
