@@ -11,8 +11,6 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
 
   var top: Int = _
 
-  viewport(0)
-
   def viewport(from: Int): Unit = {
     top = from
     render(from until ((from + height) min model.lines))

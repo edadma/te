@@ -104,6 +104,9 @@ object Main extends App {
     nodelay(view.win, bf = true)
 
     Event.handler = {
+      case DocumentLoadEvent(views) =>
+        views foreach (_.viewport(0))
+        home()
       case DocumentChangeEvent(views, line) =>
         for (v <- views)
           v.render(v.visibleFrom(line))
@@ -142,7 +145,7 @@ object Main extends App {
         }
     }
 
-    home()
+    Event(DocumentLoadEvent(Seq(view)))
     Event.start()
     endwin
   }
