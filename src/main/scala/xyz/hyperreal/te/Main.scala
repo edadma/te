@@ -4,9 +4,6 @@ import scopt.OParser
 import xyz.hyperreal.ncurses.LibNCurses._
 
 import java.io.File
-import java.nio.file.{Files, Paths}
-import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
 import scala.scalanative.unsafe._
 
 object Main extends App {
@@ -77,24 +74,28 @@ object Main extends App {
 //      |24
 //      |25
 //      |""".trim.stripMargin
-    val view     = new TextView(new TextModel(file.getPath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    val view     = new TextView(new TextModel(file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
     var pos: Pos = null
 
     def home(): Unit = cursor(Pos(0, 0))
 
-    def cursor(p: Pos): Unit = Zone { implicit z =>
+    def cursor(p: Pos): Unit = {
       pos = p
+      status()
+      view.cursor(p)
+    }
+
+    def status(): Unit = Zone { implicit z =>
       move(getmaxy(stdscr) - 1, 0)
       wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
 
-      val status = s"${p.line + 1}:${p.col + 1}  LF  UTF-8  2-spaces"
+      val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2-spaces"
 
       clrtoeol
       move(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length)
       addstr(toCString(status))
       wbkgdset(stdscr, ' ')
       refresh
-      view.cursor(p)
     }
 
     Event.handler = {
@@ -113,6 +114,7 @@ object Main extends App {
 
         view.cursor(pos)
       case SegmentChangeEvent(views, line, from, count, chars) =>
+      case DocumentModifiedEvent(model)                        =>
       case KeyEvent("^C")                                      => Event.stop() //todo: remove this case
       case KeyEvent("KEY_HOME")                                => view.model.startOfLine(pos) foreach cursor
       case KeyEvent("KEY_END")                                 => view.model.endOfLine(pos) foreach cursor
@@ -128,7 +130,12 @@ object Main extends App {
       case KeyEvent("KEY_DC")                                  => view.cursor(view.model.delete(pos))
       case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
       case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
+      case KeyEvent("^S")                                      => view.model.save()
+      case KeyEvent(k) if k.startsWith("^") && k.length > 1    =>
       case KeyEvent(s)                                         => cursor(view.model.insert(pos, s.head))
+      case NotificationEvent(text) =>
+        message(text)
+        view.cursor(pos)
     }
 
     Event phase {

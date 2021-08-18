@@ -18,8 +18,17 @@ object Event {
 
     while (running) {
       now = System.currentTimeMillis()
+
       get foreach handler
-      timers foreach { case Timeout(expires, action) if expires >= now => action() }
+
+      timers.toList foreach {
+        case t @ Timeout(expires, action) =>
+          if (now >= expires) {
+            action()
+            cancel(t)
+          }
+      }
+
       phases foreach (_())
     }
   }
@@ -36,19 +45,25 @@ object Event {
     if (events nonEmpty) Some(events.dequeue())
     else None
 
-  def timeout(delay: Long)(action: => Unit): Timeout = Timeout(now + delay, () => action)
+  def timeout(delay: Long)(action: => Unit): Timeout = {
+    val t = Timeout(now + delay, () => action)
+
+    timers += t
+    t
+  }
 
   def cancel(t: Timeout): Unit = timers -= t
 
-  case class Timeout(expires: Long, action: () => Unit)
-
 }
+
+case class Timeout(expires: Long, action: () => Unit)
 
 trait Event
 case class SegmentChangeEvent(views: Seq[TextView], line: Int, from: Int, count: Int, chars: String) extends Event
 case class LineChangeEvent(views: Seq[TextView], line: Int, from: Int, chars: String)                extends Event
 case class LinesChangeEvent(views: Seq[TextView], line: Int)                                         extends Event
-case class DocumentModifiedEvent(views: Seq[TextView])                                               extends Event
+case class DocumentModifiedEvent(model: TextModel)                                                   extends Event
 case class DocumentLoadEvent(views: Seq[TextView])                                                   extends Event
 case class KeyEvent(key: String)                                                                     extends Event
 case class MouseEvent(e: String)                                                                     extends Event
+case class NotificationEvent(text: String)                                                           extends Event

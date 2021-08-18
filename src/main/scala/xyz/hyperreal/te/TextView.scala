@@ -53,18 +53,12 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
         top += n
         render(p.line until p.line + n)
       } else {
-        bottom("viewport")
+        message("viewport")
         viewport(p.line)
       }
     }
 
     wmove(win, p.line - top, p.col)
-  }
-
-  def bottom(x: Any): CInt = {
-    move(getmaxy(stdscr) - 1, 0)
-    Zone(implicit z => addstr(toCString(String.valueOf(x))))
-    refresh
   }
 
   def close(): Unit = {

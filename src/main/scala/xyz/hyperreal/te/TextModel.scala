@@ -1,8 +1,9 @@
 package xyz.hyperreal.te
 
+import javax.management.Notification
 import scala.collection.mutable.ArrayBuffer
 
-class TextModel(path: String, init: String = null) {
+class TextModel(val path: String, init: String = null) {
   val text = new ArrayBuffer[ArrayBuffer[Char]]()
 
   if (init == null)
@@ -107,10 +108,12 @@ class TextModel(path: String, init: String = null) {
     if (char < text(line).length) {
       text(line).remove(char)
       Event(LineChangeEvent(views, line, col, slice(line, char)))
+      modified()
     } else if (line < text.length - 1) {
       text(line).addAll(text(line + 1))
       text.remove(line + 1)
       Event(LinesChangeEvent(views, line))
+      modified()
     }
 
     p
@@ -120,6 +123,20 @@ class TextModel(path: String, init: String = null) {
 
   def slice(line: Int, from: Int): String = slice(line, from, text(line).length)
 
+  var autosaveTimer: Timeout = _
+
+  def modified(): Unit = {
+    if (autosaveTimer ne null)
+      Event.cancel(autosaveTimer)
+
+    autosaveTimer = Event.timeout(2 * 1000) { save() }
+    Event(DocumentModifiedEvent(this))
+  }
+
+  def save(): Unit = {
+    Event(NotificationEvent(s""""$path" saved"""))
+  }
+
   def insertTab(p: Pos): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
@@ -127,6 +144,7 @@ class TextModel(path: String, init: String = null) {
 
     text(line).insertAll(char, if (exptabs) " " * spaces else "\t")
     Event(LineChangeEvent(views, line, col, slice(line, char)))
+    modified()
     Pos(line, col + spaces)
   }
 
@@ -144,6 +162,7 @@ class TextModel(path: String, init: String = null) {
     } else
       Event(LinesChangeEvent(views, line + 1))
 
+    modified()
     Pos(line + 1, 0)
   }
 
@@ -153,9 +172,17 @@ class TextModel(path: String, init: String = null) {
 
     text(line).insert(char, c)
     Event(LineChangeEvent(views, line, col, slice(line, char)))
+    modified()
     Pos(line, col + 1)
   }
 
   def getLine(line: Int): String = text(line).mkString
 
+  /*
+          Event.timeout(2 * 1000) {
+          status()
+          view.cursor(pos)
+        }
+
+ */
 }
