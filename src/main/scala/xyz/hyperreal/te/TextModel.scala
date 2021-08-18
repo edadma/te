@@ -1,7 +1,6 @@
 package xyz.hyperreal.te
 
 import java.io.PrintWriter
-import javax.management.Notification
 import scala.collection.mutable.ArrayBuffer
 
 class TextModel(val path: String, init: String = null) {

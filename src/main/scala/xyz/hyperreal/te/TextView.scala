@@ -38,7 +38,6 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
       if (p.line < top && top - p.line < height) {
         val n = top - p.line
 
-        //        bottom(s"scroll up: $n, height: $height")
         wscrl(win, -n)
 
         val oldtop = top
@@ -48,14 +47,11 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
       } else if (p.line >= top + height && p.line - (top + height) < height) {
         val n = p.line - (top + height) + 1
 
-        //        bottom(s"scroll down: $n, height: $height")
         wscrl(win, n)
         top += n
-        render(p.line until p.line + n)
-      } else {
-        message("viewport")
+        render(top + height - n until top + height)
+      } else
         viewport(p.line)
-      }
     }
 
     wmove(win, p.line - top, p.col)

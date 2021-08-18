@@ -107,6 +107,10 @@ object Main extends App {
       view.cursor(pos)
     }
 
+//    Event.reactions += {
+//      case e => log(e)
+//    }
+
     Event.reactions += {
       case DocumentLoadEvent(views) =>
         views foreach (_.viewport(0))
