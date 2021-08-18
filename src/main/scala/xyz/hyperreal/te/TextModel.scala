@@ -110,7 +110,7 @@ class TextModel(path: String, init: String = null) {
     } else if (line < text.length - 1) {
       text(line).addAll(text(line + 1))
       text.remove(line + 1)
-      Event(DocumentChangeEvent(views, line))
+      Event(LinesChangeEvent(views, line))
     }
 
     p
@@ -140,9 +140,9 @@ class TextModel(path: String, init: String = null) {
 
     if (text(line).length > char) {
       text(line).remove(char, text(line).length - char)
-      Event(DocumentChangeEvent(views, line))
+      Event(LinesChangeEvent(views, line))
     } else
-      Event(DocumentChangeEvent(views, line + 1))
+      Event(LinesChangeEvent(views, line + 1))
 
     Pos(line + 1, 0)
   }

@@ -101,7 +101,7 @@ object Main extends App {
       case DocumentLoadEvent(views) =>
         views foreach (_.viewport(0))
         home()
-      case DocumentChangeEvent(views, line) =>
+      case LinesChangeEvent(views, line) =>
         for (v <- views)
           v.render(v.visibleFrom(line))
 
