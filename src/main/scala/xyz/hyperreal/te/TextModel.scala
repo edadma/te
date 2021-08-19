@@ -142,7 +142,7 @@ class TextModel(val path: String, init: String = null) {
   }
 
   def save(): Unit = {
-    val w = new PrintWriter(path)
+    val w = new PrintWriter(path, "UTF-8")
 
     for (l <- textBuffer)
       w.println(l.mkString)

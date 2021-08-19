@@ -7,7 +7,7 @@ import java.io.File
 import scala.scalanative.unsafe._
 
 object Main extends App {
-  case class Config(file: Option[File])
+  case class Config(file: Option[File], encoding: String)
 
   val builder = OParser.builder[Config]
 
@@ -21,6 +21,13 @@ object Main extends App {
 //      opt[Unit]('v', "verbose")
 //        .action((_, c) => c.copy(verbose = true))
 //        .text("print internal actions"),
+      opt[String]('e', "encoding")
+        .optional()
+        .action((e, c) => c.copy(encoding = e))
+        .validate(e =>
+          if (e == "UTF-8") success
+          else failure(s"invalid character encoding scheme: $e"))
+        .text("set character encoding scheme"),
       version('v', "version").text("prints the version"),
       arg[Option[File]]("<file>")
         .optional()
@@ -32,18 +39,18 @@ object Main extends App {
     )
   }
 
-  OParser.parse(parser, args, Config(None)) match {
-    case Some(Config(Some(file))) => app(file)
-    case Some(Config(None))       => app(new File("untitled"))
-    case _                        =>
+  OParser.parse(parser, args, Config(None, "UTF-8")) match {
+    case Some(Config(Some(file), enc)) => app(file, enc)
+    case Some(Config(None, enc))       => app(new File("untitled"), enc)
+    case _                             =>
   }
 
-  def app(file: File): Unit = {
+  def app(file: File, enc: String): Unit = {
     initscr
 
     //  val init     = Files.readString(Paths.get("build.sbt"))
     val init = {
-      if (file.exists) util.Using(io.Source.fromFile(file.getPath))(_.mkString).get
+      if (file.exists) util.Using(io.Source.fromFile(file.getPath, enc))(_.mkString).get
       else ""
     }
 //    val init =
