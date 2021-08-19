@@ -11,10 +11,19 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
 
   var top: Int = _
 
+  def resize(lines: Int, cols: Int): Unit = {
+    wresize(win, lines, cols)
+    render()
+  }
+
+  def render(): Unit = {
+    render(top until ((top + height) min model.lines))
+    wclrtobot(win)
+  }
+
   def viewport(from: Int): Unit = {
     top = from
-    render(from until ((from + height) min model.lines))
-    wclrtobot(win)
+    render()
   }
 
   def render(line: Int, from: Int, chars: String): Unit = Zone { implicit z =>
@@ -26,6 +35,8 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
   def render(range: Seq[Int]): Unit =
     for (i <- range)
       render(i, 0, model.getLine(i))
+
+  def width: Int = getmaxx(win)
 
   def height: Int = getmaxy(win)
 

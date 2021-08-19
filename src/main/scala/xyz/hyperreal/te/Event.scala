@@ -72,3 +72,4 @@ case class DocumentLoadEvent(views: Seq[TextView])                              
 case class KeyEvent(key: String)                                                                     extends Event
 case class MouseEvent(e: String)                                                                     extends Event
 case class NotificationEvent(text: String)                                                           extends Event
+case object ResizeEvent                                                                              extends Event

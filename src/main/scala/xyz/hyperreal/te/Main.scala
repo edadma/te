@@ -152,6 +152,13 @@ object Main extends App {
 
         notify(text)
         removalTimer = Event.timeout(5 * 1000) { notify("") }
+      case ResizeEvent =>
+//        log(getmaxy(stdscr) - 3, getmaxx(stdscr))
+        view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
+
+        val p = pos copy (line = pos.line min (view.top + view.height - 1))
+
+        cursor(p copy (col = p.col min (view.width - 1) min (view.model.getLine(p.line).length - 1)))
     }
 
     Event phase {
@@ -159,8 +166,9 @@ object Main extends App {
 
       if (k != ERR)
         fromCString(keyname(k)) match {
-          case "KEY_MOUSE" => Event(MouseEvent(""))
-          case k           => Event(KeyEvent(k))
+          case "KEY_MOUSE"  => Event(MouseEvent(""))
+          case "KEY_RESIZE" => Event(ResizeEvent)
+          case k            => Event(KeyEvent(k))
         }
     }
 
