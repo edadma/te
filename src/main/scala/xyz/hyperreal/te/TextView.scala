@@ -27,8 +27,7 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
   }
 
   def render(line: Int, from: Int, chars: String): Unit = Zone { implicit z =>
-    wmove(win, line - top, from)
-    waddstr(win, toCString(chars))
+    mvwaddstr(win, line - top, from, toCString(chars))
     wclrtoeol(win)
   }
 

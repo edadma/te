@@ -98,10 +98,8 @@ object Main extends App {
       val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2-spaces"
 
       clrtoeol
-      move(getmaxy(stdscr) - 1, 0)
-      addstr(toCString(notification))
-      move(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length)
-      addstr(toCString(status))
+      mvaddstr(getmaxy(stdscr) - 1, 0, toCString(notification))
+      mvaddstr(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length, toCString(status))
       wbkgdset(stdscr, ' ')
       refresh
       view.cursor(pos)
