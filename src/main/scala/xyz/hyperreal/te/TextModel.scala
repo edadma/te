@@ -12,6 +12,7 @@ class TextModel(val path: String, init: String = null) {
   case class InsertAction(n: Int, before: Pos, after: Pos) extends Action
   case class DeleteAction(s: String, after: Pos)           extends Action
   case class DeleteBreakAction(after: Pos)                 extends Action
+  case class DeleteTabAction(after: Pos)                   extends Action
   case class ReplaceAction(s: String, after: Pos)          extends Action
 
   val subscribers = new ArrayBuffer[TextView]
@@ -33,11 +34,17 @@ class TextModel(val path: String, init: String = null) {
     if (undoBuffer.nonEmpty) Some(undoBuffer.top.after)
     else None
 
+  def action(a: Action): Pos = {
+    undoBuffer push a
+    a.after
+  }
+
   def undo: Pos =
-    undoBuffer pop match {
-      case InsertAction(_, before, _) => delete(before)
+    undoBuffer.pop() match {
+      case InsertAction(n, before, _) => delete(before, n)
       case DeleteAction(s, after)     => insert(after, s.head)
       case DeleteBreakAction(after)   => insertBreak(after)
+      case DeleteTabAction(after)     => insertTab(after)
     }
 
   def subscribe(view: TextView): Unit = subscribers += view
@@ -116,19 +123,22 @@ class TextModel(val path: String, init: String = null) {
     else None
   }
 
-  def backspace(p: Pos): Option[Pos] = left(p) map delete
+  def backspace(p: Pos): Option[Pos] = left(p) map deleteOne
 
   def views: List[TextView] = subscribers.toList
 
-  def delete(p: Pos): Pos = {
+  def deleteOne(p: Pos): Pos = delete(p, 1)
+
+  def delete(p: Pos, n: Int): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
 
     if (char < textBuffer(line).length) {
-      textBuffer(line).remove(char)
+      textBuffer(line).remove(char, n)
       Event(LineChangeEvent(views, line, col, slice(line, char)))
       modified()
     } else if (line < textBuffer.length - 1) {
+      require(n == 1, s"delete: since a line break is being removed, n should be 1: n = $n")
       textBuffer(line).addAll(textBuffer(line + 1))
       textBuffer.remove(line + 1)
       Event(LinesChangeEvent(views, line))
@@ -166,11 +176,12 @@ class TextModel(val path: String, init: String = null) {
     val char           = col2char(p)
     val Pos(line, col) = p
     val spaces         = tabs - col % tabs
+    val chars          = if (exptabs) " " * spaces else "\t"
 
-    textBuffer(line).insertAll(char, if (exptabs) " " * spaces else "\t")
+    textBuffer(line).insertAll(char, chars)
     Event(LineChangeEvent(views, line, col, slice(line, char)))
     modified()
-    Pos(line, col + spaces)
+    action(InsertAction(chars.length, p, Pos(line, col + spaces)))
   }
 
   def insertBreak(p: Pos): Pos = {
@@ -188,7 +199,7 @@ class TextModel(val path: String, init: String = null) {
       Event(LinesChangeEvent(views, line + 1))
 
     modified()
-    Pos(line + 1, 0)
+    action(InsertAction(1, p, Pos(line + 1, 0)))
   }
 
   def insert(p: Pos, c: Char): Pos = {
@@ -198,7 +209,7 @@ class TextModel(val path: String, init: String = null) {
     textBuffer(line).insert(char, c)
     Event(LineChangeEvent(views, line, col, slice(line, char)))
     modified()
-    Pos(line, col + 1)
+    action(InsertAction(1, p, Pos(line, col + 1)))
   }
 
   def getLine(line: Int): String = textBuffer(line).mkString
