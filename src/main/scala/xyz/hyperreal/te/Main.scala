@@ -115,8 +115,9 @@ object Main extends App {
         home()
       case LinesChangeEvent(views, line) =>
         for (v <- views)
-          v.render(v.visibleFrom(line))
+          v.renderToBottom(v.visibleFrom(line))
 
+        wclrtobot(view.win)
         view.cursor(pos)
       case LineChangeEvent(views, line, from, chars) =>
         for (v <- views)

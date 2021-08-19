@@ -17,7 +17,11 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
   }
 
   def render(): Unit = {
-    render(top until ((top + height) min model.lines))
+    renderToBottom(top until ((top + height) min model.lines))
+  }
+
+  def renderToBottom(range: Seq[Int]): Unit = {
+    render(range)
     wclrtobot(win)
   }
 

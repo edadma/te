@@ -208,7 +208,7 @@ class TextModel(val path: String, init: String = null) {
     val Pos(line, col) = p
     val a =
       if (char < textBuffer(line).length) {
-        val s = textBuffer(line).slice(char, n).mkString
+        val s = textBuffer(line).slice(char, char + n).mkString
 
         textBuffer(line).remove(char, n)
         Event(LineChangeEvent(views, line, col, slice(line, char)))
