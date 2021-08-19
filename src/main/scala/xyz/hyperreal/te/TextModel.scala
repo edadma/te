@@ -41,10 +41,10 @@ class TextModel(val path: String, init: String = null) {
 
   def undo: Pos =
     undoBuffer.pop() match {
-      case InsertAction(n, before, _) => delete(before, n)
-      case DeleteAction(s, after)     => insert(after, s.head)
-      case DeleteBreakAction(after)   => insertBreak(after)
-      case DeleteTabAction(after)     => insertTab(after)
+      case InsertAction(n, before, _) => delete(before, n, noaction = true)
+      case DeleteAction(s, after)     => insert(after, s.head, noaction = true)
+      case DeleteBreakAction(after)   => insertBreak(after, noaction = true)
+      case DeleteTabAction(after)     => insertTab(after, noaction = true)
     }
 
   def subscribe(view: TextView): Unit = subscribers += view
@@ -123,30 +123,9 @@ class TextModel(val path: String, init: String = null) {
     else None
   }
 
-  def backspace(p: Pos): Option[Pos] = left(p) map deleteOne
+  def backspace(p: Pos): Option[Pos] = left(p) map (np => delete(np, 1))
 
   def views: List[TextView] = subscribers.toList
-
-  def deleteOne(p: Pos): Pos = delete(p, 1)
-
-  def delete(p: Pos, n: Int): Pos = {
-    val char           = col2char(p)
-    val Pos(line, col) = p
-
-    if (char < textBuffer(line).length) {
-      textBuffer(line).remove(char, n)
-      Event(LineChangeEvent(views, line, col, slice(line, char)))
-      modified()
-    } else if (line < textBuffer.length - 1) {
-      require(n == 1, s"delete: since a line break is being removed, n should be 1: n = $n")
-      textBuffer(line).addAll(textBuffer(line + 1))
-      textBuffer.remove(line + 1)
-      Event(LinesChangeEvent(views, line))
-      modified()
-    }
-
-    p
-  }
 
   def slice(line: Int, from: Int, until: Int): String = textBuffer(line).slice(from, until).mkString
 
@@ -172,7 +151,7 @@ class TextModel(val path: String, init: String = null) {
     Event(NotificationEvent(s""""$path" saved"""))
   }
 
-  def insertTab(p: Pos): Pos = {
+  def insertTab(p: Pos, noaction: Boolean = false): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
     val spaces         = tabs - col % tabs
@@ -181,10 +160,14 @@ class TextModel(val path: String, init: String = null) {
     textBuffer(line).insertAll(char, chars)
     Event(LineChangeEvent(views, line, col, slice(line, char)))
     modified()
-    action(InsertAction(chars.length, p, Pos(line, col + spaces)))
+
+    val after = Pos(line, col + spaces)
+
+    if (noaction) after
+    else action(InsertAction(chars.length, p, after))
   }
 
-  def insertBreak(p: Pos): Pos = {
+  def insertBreak(p: Pos, noaction: Boolean = false): Pos = {
     val char         = col2char(p)
     val Pos(line, _) = p
 
@@ -199,17 +182,51 @@ class TextModel(val path: String, init: String = null) {
       Event(LinesChangeEvent(views, line + 1))
 
     modified()
-    action(InsertAction(1, p, Pos(line + 1, 0)))
+
+    val after = Pos(line + 1, 0)
+
+    if (noaction) after
+    else action(InsertAction(1, p, after))
   }
 
-  def insert(p: Pos, c: Char): Pos = {
+  def insert(p: Pos, c: Char, noaction: Boolean = false): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
 
     textBuffer(line).insert(char, c)
     Event(LineChangeEvent(views, line, col, slice(line, char)))
     modified()
-    action(InsertAction(1, p, Pos(line, col + 1)))
+
+    val after = Pos(line, col + 1)
+
+    if (noaction) after
+    else action(InsertAction(1, p, after))
+  }
+
+  def delete(p: Pos, n: Int, noaction: Boolean = false): Pos = {
+    val char           = col2char(p)
+    val Pos(line, col) = p
+    val a =
+      if (char < textBuffer(line).length) {
+        val s = textBuffer(line).slice(char, n).mkString
+
+        textBuffer(line).remove(char, n)
+        Event(LineChangeEvent(views, line, col, slice(line, char)))
+        modified()
+
+        if (s.head == '\t') DeleteTabAction(p)
+        else DeleteAction(s, p)
+      } else if (line < textBuffer.length - 1) {
+        require(n == 1, s"delete: since a line break is being removed, n should be 1: n = $n")
+        textBuffer(line).addAll(textBuffer(line + 1))
+        textBuffer.remove(line + 1)
+        Event(LinesChangeEvent(views, line))
+        modified()
+        DeleteBreakAction(p)
+      } else null
+
+    if (noaction || a == null) p
+    else action(a)
   }
 
   def getLine(line: Int): String = textBuffer(line).mkString
