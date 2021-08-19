@@ -142,6 +142,8 @@ object Main extends App {
       case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
       case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
       case KeyEvent("^S")                                      => view.model.save()
+      case KeyEvent("^S")                                      => view.model.save()
+      case KeyEvent("^Z")                                      => view.model.save()
       case KeyEvent(k) if k.startsWith("^") && k.length > 1    =>
       case KeyEvent(s)                                         => cursor(view.model.insert(pos, s.head))
       case NotificationEvent(text) =>
