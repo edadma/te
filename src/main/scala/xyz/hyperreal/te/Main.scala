@@ -153,7 +153,6 @@ object Main extends App {
         notify(text)
         removalTimer = Event.timeout(5 * 1000) { notify("") }
       case ResizeEvent =>
-//        log(getmaxy(stdscr) - 3, getmaxx(stdscr))
         view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
 
         val p = pos copy (line = pos.line min (view.top + view.height - 1))
