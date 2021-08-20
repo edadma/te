@@ -11,7 +11,6 @@ object Main extends App {
   case class Config(file: File, encoding: String)
 
   val builder = OParser.builder[Config]
-
   val parser = {
     import builder._
 
@@ -41,17 +40,17 @@ object Main extends App {
   }
 
   OParser.parse(parser, args, Config(new File("untitled"), "UTF-8")) match {
-    case Some(Config(file, enc)) => app(file, enc)
-    case _                       =>
+    case Some(conf) => app(conf)
+    case _          =>
   }
 
-  def app(file: File, enc: String): Unit = {
+  def app(conf: Config): Unit = {
     initscr
 
     val init =
-      if (file.exists) util.Using(io.Source.fromFile(file.getPath, enc))(_.mkString).get
+      if (conf.file.exists) util.Using(io.Source.fromFile(conf.file.getPath, conf.encoding))(_.mkString).get
       else ""
-    val view = new TextView(new TextModel(file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
     try {
       val buffers               = new ArrayBuffer[TextView] :+ view
       var pos: Pos              = null
