@@ -135,15 +135,36 @@ class TextModel(var path: String, init: String = null) {
           throw new NoSuchElementException("no more characters to the left")
     } to LazyList
 
-  def isWordChar(c: Char): Boolean = c.isLetterOrDigit || c == '_' | c == '$'
+  def rightLazyList(p: Pos): LazyList[(Char, Pos)] =
+    new Iterator[(Char, Pos)] {
+      private var char = col2char(p)
+      private var line = p.line
 
-  def isDelimiter(c: Char): Boolean = "[]{}()" contains c
+      def hasNext: Boolean = char < textBuffer(line).length || line < textBuffer.length - 1
 
-  def isSpace(c: Char): Boolean = " \t" contains c
+      def next(): (Char, Pos) =
+        if (char < textBuffer(line).length) {
+          val res = (textBuffer(line)(char), char2col(line, char))
 
-  def isSymbol(c: Char): Boolean = !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n'
+          char += 1
+          res
+        } else if (line < textBuffer.length - 1) {
+          val res = ('\n', char2col(line, char))
+
+          line += 1
+          char = 0
+          res
+        } else
+          throw new NoSuchElementException("no more characters to the right")
+    } to LazyList
 
   def jump(l: LazyList[(Char, Pos)]): Pos = {
+    def isWordChar(c: Char): Boolean = c.isLetterOrDigit || c == '_' | c == '$'
+
+    def isDelimiter(c: Char): Boolean = "[]{}()" contains c
+
+    def isSpace(c: Char): Boolean = " \t" contains c
+
     val s = l dropWhile { case (c, _) => isSpace(c) }
 
     if (s.isEmpty) Pos(0, 0)
@@ -157,7 +178,7 @@ class TextModel(var path: String, init: String = null) {
       else if (isDelimiter(c))
         (s takeWhile (_._1 == c) last)._2
       else
-        (s takeWhile { case (c, _) => isSymbol(c) } last)._2
+        (s takeWhile { case (c, _) => !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n' } last)._2
     }
   }
 
@@ -171,6 +192,8 @@ class TextModel(var path: String, init: String = null) {
     else if (line < textBuffer.length - 1) Some(Pos(line + 1, 0))
     else None
   }
+
+  def rightWord(p: Pos): Pos = jump(rightLazyList(p))
 
   def backspace(p: Pos): Option[Pos] = left(p) map (np => delete(np, 1))
 

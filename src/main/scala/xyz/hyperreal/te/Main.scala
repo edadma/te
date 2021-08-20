@@ -170,6 +170,7 @@ object Main extends App {
         case KeyEvent(s)                                      => cursor(view.model.insert(pos, s.head))
         case ResizeEvent =>
           view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
+          tabs()
 
           val p = pos copy (line = pos.line min (view.top + view.height - 1))
 
