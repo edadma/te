@@ -19,9 +19,9 @@ object Main extends App {
       programName("te"),
       head("Terminal Editor", "v0.1.0"),
       help('h', "help").text("prints this usage text"),
-//      opt[Unit]('v', "verbose")
-//        .action((_, c) => c.copy(verbose = true))
-//        .text("print internal actions"),
+      //      opt[Unit]('v', "verbose")
+      //        .action((_, c) => c.copy(verbose = true))
+      //        .text("print internal actions"),
       opt[String]('e', "encoding")
         .optional()
         .action((e, c) => c.copy(encoding = e))
@@ -51,145 +51,158 @@ object Main extends App {
     val init =
       if (file.exists) util.Using(io.Source.fromFile(file.getPath, enc))(_.mkString).get
       else ""
-    val view                  = new TextView(new TextModel(file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
-    val buffers               = new ArrayBuffer[TextView] :+ view
-    var pos: Pos              = null
-    var notification: String  = ""
-    var removalTimer: Timeout = null
+    val view = new TextView(new TextModel(file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    try {
+      val buffers               = new ArrayBuffer[TextView] :+ view
+      var pos: Pos              = null
+      var notification: String  = ""
+      var removalTimer: Timeout = null
 
-    def home(): Unit = cursor(Pos(0, 0))
+      def home(): Unit = cursor(Pos(0, 0))
 
-    def tabs(): Unit = Zone { implicit z =>
-      move(1, 0)
+      def tabs(): Unit = Zone { implicit z =>
+        move(1, 0)
 
-      for (b <- buffers) {
-        attron(A_REVERSE | A_DIM)
-        addstr(
-          toCString(
-            s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '}${if (b ne buffers.last) " | "
-            else ""}"))
-        attroff(A_REVERSE | A_DIM)
+        for (b <- buffers) {
+          attron(A_REVERSE | A_DIM)
+          addstr(
+            toCString(
+              s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '}${if (b ne buffers.last) " | "
+              else ""}"))
+          attroff(A_REVERSE | A_DIM)
+        }
+
+        refresh
+        view.cursor(pos)
       }
 
-      refresh
-      view.cursor(pos)
-    }
+      def cursor(p: Pos): Unit = {
+        pos = p
+        status()
+      }
 
-    def cursor(p: Pos): Unit = {
-      pos = p
-      status()
-    }
+      def notify(text: String): Unit = {
+        notification = text
+        status()
+      }
 
-    def notify(text: String): Unit = {
-      notification = text
-      status()
-    }
+      def status(): Unit = Zone { implicit z =>
+        move(getmaxy(stdscr) - 1, 0)
+        wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
 
-    def status(): Unit = Zone { implicit z =>
-      move(getmaxy(stdscr) - 1, 0)
-      wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
+        val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2 spaces  exp"
 
-      val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2 spaces  exp"
-
-      clrtoeol
-      mvaddstr(getmaxy(stdscr) - 1, 0, toCString(notification))
-      mvaddstr(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length, toCString(status))
-      wbkgdset(stdscr, ' ')
-      refresh
-      view.cursor(pos)
-    }
-
-//    Event.reactions += {
-//      case e => log(e)
-//    }
-
-    Event.reactions += {
-      case DocumentLoadEvent(views) =>
-        views foreach (_.viewport(0))
-        home()
-        tabs()
-      case DocumentSaveEvent(model) =>
-        tabs()
-
-        if (removalTimer ne null)
-          Event.cancel(removalTimer)
-
-        notify(s""""${model.path}" saved""")
-        removalTimer = Event.timeout(5 * 1000) { notify("") }
-      case LinesChangeEvent(views, line) =>
-        for (v <- views)
-          v.renderToBottom(v.visibleFrom(line))
-
-        wclrtobot(view.win)
+        clrtoeol
+        mvaddstr(getmaxy(stdscr) - 1, 0, toCString(notification))
+        mvaddstr(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length, toCString(status))
+        wbkgdset(stdscr, ' ')
+        refresh
         view.cursor(pos)
-      case LineChangeEvent(views, line, from, chars) =>
-        for (v <- views)
-          if (v.visibleLine(line))
-            v.render(line, from, chars)
+      }
 
-        view.cursor(pos)
-      case SegmentChangeEvent(views, line, from, count, chars) =>
-      case DocumentModifiedEvent(model)                        => tabs()
-      case KeyEvent("^C")                                      => Event.stop() //todo: remove this case
-      case KeyEvent("KEY_HOME")                                => view.model.startOfLine(pos) foreach cursor
-      case KeyEvent("KEY_END")                                 => view.model.endOfLine(pos) foreach cursor
-      case KeyEvent("kHOM5")                                   => home()
-      case KeyEvent("kEND5")                                   => cursor(view.model.end)
-      case KeyEvent("KEY_PPAGE")                               => view.model.up(pos, view.height) foreach cursor
-      case KeyEvent("KEY_NPAGE")                               => view.model.down(pos, view.height) foreach cursor
-      case KeyEvent("KEY_UP")                                  => view.model.up(pos, 1) foreach cursor
-      case KeyEvent("KEY_DOWN")                                => view.model.down(pos, 1) foreach cursor
-      case KeyEvent("KEY_LEFT")                                => view.model.left(pos) foreach cursor
-      case KeyEvent("KEY_RIGHT")                               => view.model.right(pos) foreach cursor
-      case KeyEvent("KEY_BACKSPACE")                           => view.model.backspace(pos) foreach cursor
-      case KeyEvent("KEY_DC")                                  => view.cursor(view.model.delete(pos, 1))
-      case KeyEvent("kLFT5")                                   => cursor(view.model.leftWord(pos))
-      case KeyEvent("kRIT5")                                   => //ctrl ->
-      case KeyEvent("^H")                                      => //ctrl bs
-      case KeyEvent("kDC5")                                    => //ctrl del
-      case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
-      case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
-      case KeyEvent("^S")                                      => view.model.save()
-      case KeyEvent("^Z") =>
-        view.model.afterLast match {
-          case Some(after) =>
-            if (after != pos)
-              cursor(after)
-            else
-              cursor(view.model.undo)
-          case None =>
-        }
-      case KeyEvent(k) if k.startsWith("^") && k.length > 1 =>
-      case KeyEvent(s)                                      => cursor(view.model.insert(pos, s.head))
-      case ResizeEvent =>
-        view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
+      //    Event.reactions += {
+      //      case e => log(e)
+      //    }
 
-        val p = pos copy (line = pos.line min (view.top + view.height - 1))
+      Event.reactions += {
+        case DocumentLoadEvent(views) =>
+          views foreach (_.viewport(0))
+          home()
+          tabs()
+        case DocumentSaveEvent(model) =>
+          tabs()
 
-        cursor(p copy (col = p.col min (view.width - 1) min (view.model.getLine(p.line).length - 1)))
+          if (removalTimer ne null)
+            Event.cancel(removalTimer)
+
+          notify(s""""${model.path}" saved""")
+          removalTimer = Event.timeout(5 * 1000) {
+            notify("")
+          }
+        case LinesChangeEvent(views, line) =>
+          for (v <- views)
+            v.renderToBottom(v.visibleFrom(line))
+
+          wclrtobot(view.win)
+          view.cursor(pos)
+        case LineChangeEvent(views, line, from, chars) =>
+          for (v <- views)
+            if (v.visibleLine(line))
+              v.render(line, from, chars)
+
+          view.cursor(pos)
+        case SegmentChangeEvent(views, line, from, count, chars) =>
+        case DocumentModifiedEvent(model)                        => tabs()
+        case KeyEvent("^C")                                      => Event.stop() //todo: remove this case
+        case KeyEvent("KEY_HOME")                                => view.model.startOfLine(pos) foreach cursor
+        case KeyEvent("KEY_END")                                 => view.model.endOfLine(pos) foreach cursor
+        case KeyEvent("kHOM5")                                   => home()
+        case KeyEvent("kEND5")                                   => cursor(view.model.end)
+        case KeyEvent("KEY_PPAGE")                               => view.model.up(pos, view.height) foreach cursor
+        case KeyEvent("KEY_NPAGE")                               => view.model.down(pos, view.height) foreach cursor
+        case KeyEvent("KEY_UP")                                  => view.model.up(pos, 1) foreach cursor
+        case KeyEvent("KEY_DOWN")                                => view.model.down(pos, 1) foreach cursor
+        case KeyEvent("KEY_LEFT")                                => view.model.left(pos) foreach cursor
+        case KeyEvent("KEY_RIGHT")                               => view.model.right(pos) foreach cursor
+        case KeyEvent("KEY_BACKSPACE")                           => view.model.backspace(pos) foreach cursor
+        case KeyEvent("KEY_DC")                                  => view.cursor(view.model.delete(pos, 1))
+        case KeyEvent("kLFT5")                                   => cursor(view.model.leftWord(pos))
+        case KeyEvent("kRIT5")                                   => //ctrl ->
+        case KeyEvent("^H")                                      => //ctrl bs
+        case KeyEvent("kDC5")                                    => //ctrl del
+        case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
+        case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
+        case KeyEvent("^S")                                      => view.model.save()
+        case KeyEvent("^Z") =>
+          view.model.afterLast match {
+            case Some(after) =>
+              if (after != pos)
+                cursor(after)
+              else
+                cursor(view.model.undo)
+            case None =>
+          }
+        case KeyEvent(k) if k.startsWith("^") && k.length > 1 =>
+        case KeyEvent(s)                                      => cursor(view.model.insert(pos, s.head))
+        case ResizeEvent =>
+          view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
+
+          val p = pos copy (line = pos.line min (view.top + view.height - 1))
+
+          cursor(p copy (col = p.col min (view.width - 1) min (view.model.getLine(p.line).length - 1)))
+      }
+
+      Event phase {
+        val k = wgetch(view.win)
+
+        if (k != ERR)
+          fromCString(keyname(k)) match {
+            case "KEY_MOUSE"  => Event(MouseEvent(""))
+            case "KEY_RESIZE" => Event(ResizeEvent)
+            case k            => Event(KeyEvent(k))
+          }
+      }
+
+      raw
+      noecho
+      keypad(view.win, bf = true)
+      scrollok(view.win, bf = true)
+      nodelay(view.win, bf = true)
+      Event(DocumentLoadEvent(Seq(view)))
+      Event.start()
+      endwin
+    } catch {
+      case e: Throwable =>
+        endwin
+        view.model.path ++= ".bak"
+        view.model.save()
+        println(
+          s"Something bad and unexpected happened. An attempt was made to save a backup copy of your document at '${view.model.path}'.")
+        e.printStackTrace()
+        sys.exit(1)
     }
 
-    Event phase {
-      val k = wgetch(view.win)
-
-      if (k != ERR)
-        fromCString(keyname(k)) match {
-          case "KEY_MOUSE"  => Event(MouseEvent(""))
-          case "KEY_RESIZE" => Event(ResizeEvent)
-          case k            => Event(KeyEvent(k))
-        }
-    }
-
-    raw
-    noecho
-    keypad(view.win, bf = true)
-    scrollok(view.win, bf = true)
-    nodelay(view.win, bf = true)
-    Event(DocumentLoadEvent(Seq(view)))
-    Event.start()
-    endwin
   }
-
 }
 
 case class Pos(line: Int, col: Int)

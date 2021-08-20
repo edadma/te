@@ -5,7 +5,7 @@ import java.util.NoSuchElementException
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class TextModel(val path: String, init: String = null) {
+class TextModel(var path: String, init: String = null) {
   val textBuffer = new ArrayBuffer[ArrayBuffer[Char]]()
   val undoBuffer = new mutable.Stack[Action]
 
@@ -144,18 +144,21 @@ class TextModel(val path: String, init: String = null) {
   def isSymbol(c: Char): Boolean = !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n'
 
   def jump(l: LazyList[(Char, Pos)]): Pos = {
-    var s = l dropWhile { case (c, _) => isSpace(c) }
+    val s = l dropWhile { case (c, _) => isSpace(c) }
 
-    val c = s.head._1
+    if (s.isEmpty) Pos(0, 0)
+    else {
+      val c = s.head._1
 
-    if (isWordChar(c))
-      (s takeWhile { case (c, _) => isWordChar(c) } last)._2
-    else if (c == '\n')
-      s.tail.head._2
-    else if (isDelimiter(c))
-      (s takeWhile (_._1 == c) last)._2
-    else
-      (s takeWhile { case (c, _) => isSymbol(c) } last)._2
+      if (isWordChar(c))
+        (s takeWhile { case (c, _) => isWordChar(c) } last)._2
+      else if (c == '\n')
+        s.head._2
+      else if (isDelimiter(c))
+        (s takeWhile (_._1 == c) last)._2
+      else
+        (s takeWhile { case (c, _) => isSymbol(c) } last)._2
+    }
   }
 
   def leftWord(p: Pos): Pos = jump(leftLazyList(p))
