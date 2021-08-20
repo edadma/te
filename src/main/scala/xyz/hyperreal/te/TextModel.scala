@@ -124,17 +124,15 @@ class TextModel(val path: String, init: String = null) {
       def hasNext: Boolean = char > 0 || line > 0
 
       def next(): (Char, Pos) =
-        if (hasNext) {
-          if (char > 0) {
-            char -= 1
-            (textBuffer(line)(char), char2col(line, char))
-          } else if (line > 0) {
-            line -= 1
-            char = textBuffer(line).length
-            ('\n', char2col(line, char))
-          } else
-            throw new NoSuchElementException("no more characters to the left")
-        }
+        if (char > 0) {
+          char -= 1
+          (textBuffer(line)(char), char2col(line, char))
+        } else if (line > 0) {
+          line -= 1
+          char = textBuffer(line).length
+          ('\n', char2col(line, char))
+        } else
+          throw new NoSuchElementException("no more characters to the left")
     } to LazyList
 
   def isWordChar(c: Char): Boolean = c.isLetterOrDigit || c == '_' | c == '$'
@@ -143,22 +141,24 @@ class TextModel(val path: String, init: String = null) {
 
   def isSpace(c: Char): Boolean = " \t" contains c
 
-  def isNewline(c: Char): Boolean = c == '\n'
+  def isSymbol(c: Char): Boolean = !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n'
 
   def jump(l: LazyList[(Char, Pos)]): Pos = {
-      var s = l dropWhile { case (c, _) => isSpace(c)}
+    var s = l dropWhile { case (c, _) => isSpace(c) }
 
-      while (s.nonEmpty) {
-        val (c, p) = s.head
+    val c = s.head._1
 
-        if (isWordChar(c)) {
-          s takeWhile { case (c, _) => isWordChar(c) } last
-        }
-      }
-
+    if (isWordChar(c))
+      (s takeWhile { case (c, _) => isWordChar(c) } last)._2
+    else if (c == '\n')
+      s.tail.head._2
+    else if (isDelimiter(c))
+      (s takeWhile (_._1 == c) last)._2
+    else
+      (s takeWhile { case (c, _) => isSymbol(c) } last)._2
   }
 
-  def leftWord(p: Pos): Option[Pos] = { ' '. }
+  def leftWord(p: Pos): Pos = jump(leftLazyList(p))
 
   def right(p: Pos): Option[Pos] = {
     val char         = col2char(p)
