@@ -89,7 +89,7 @@ object Main extends App {
       move(getmaxy(stdscr) - 1, 0)
       wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
 
-      val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2-spaces"
+      val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2 spaces  exp"
 
       clrtoeol
       mvaddstr(getmaxy(stdscr) - 1, 0, toCString(notification))
@@ -143,6 +143,10 @@ object Main extends App {
       case KeyEvent("KEY_RIGHT")                               => view.model.right(pos) foreach cursor
       case KeyEvent("KEY_BACKSPACE")                           => view.model.backspace(pos) foreach cursor
       case KeyEvent("KEY_DC")                                  => view.cursor(view.model.delete(pos, 1))
+      case KeyEvent("kLFT5")                                   => view.model.leftWord(pos) foreach cursor
+      case KeyEvent("kRIT5")                                   => //ctrl ->
+      case KeyEvent("^H")                                      => //ctrl bs
+      case KeyEvent("kDC5")                                    => //ctrl del
       case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
       case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
       case KeyEvent("^S")                                      => view.model.save()

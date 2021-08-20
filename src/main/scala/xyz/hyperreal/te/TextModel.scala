@@ -1,6 +1,7 @@
 package xyz.hyperreal.te
 
 import java.io.PrintWriter
+import java.util.NoSuchElementException
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -114,6 +115,50 @@ class TextModel(val path: String, init: String = null) {
     else if (line > 0) Some(char2col(line - 1, textBuffer(line - 1).length))
     else None
   }
+
+  def leftLazyList(p: Pos): LazyList[(Char, Pos)] =
+    new Iterator[(Char, Pos)] {
+      private var char = col2char(p)
+      private var line = p.line
+
+      def hasNext: Boolean = char > 0 || line > 0
+
+      def next(): (Char, Pos) =
+        if (hasNext) {
+          if (char > 0) {
+            char -= 1
+            (textBuffer(line)(char), char2col(line, char))
+          } else if (line > 0) {
+            line -= 1
+            char = textBuffer(line).length
+            ('\n', char2col(line, char))
+          } else
+            throw new NoSuchElementException("no more characters to the left")
+        }
+    } to LazyList
+
+  def isWordChar(c: Char): Boolean = c.isLetterOrDigit || c == '_' | c == '$'
+
+  def isDelimiter(c: Char): Boolean = "[]{}()" contains c
+
+  def isSpace(c: Char): Boolean = " \t" contains c
+
+  def isNewline(c: Char): Boolean = c == '\n'
+
+  def jump(l: LazyList[(Char, Pos)]): Pos = {
+      var s = l dropWhile { case (c, _) => isSpace(c)}
+
+      while (s.nonEmpty) {
+        val (c, p) = s.head
+
+        if (isWordChar(c)) {
+          s takeWhile { case (c, _) => isWordChar(c) } last
+        }
+      }
+
+  }
+
+  def leftWord(p: Pos): Option[Pos] = { ' '. }
 
   def right(p: Pos): Option[Pos] = {
     val char         = col2char(p)
