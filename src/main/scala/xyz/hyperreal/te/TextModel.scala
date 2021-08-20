@@ -157,14 +157,15 @@ class TextModel(var path: String, init: String = null) {
         } else
           throw new NoSuchElementException("no more characters to the right")
     } to LazyList
+  def isWordChar(c: Char): Boolean = c.isLetterOrDigit || c == '_' | c == '$'
 
-  def jump(l: LazyList[(Char, Pos)]): Pos = {
-    def isWordChar(c: Char): Boolean = c.isLetterOrDigit || c == '_' | c == '$'
+  def isDelimiter(c: Char): Boolean = "[]{}()" contains c
 
-    def isDelimiter(c: Char): Boolean = "[]{}()" contains c
+  def isSpace(c: Char): Boolean = " \t" contains c
 
-    def isSpace(c: Char): Boolean = " \t" contains c
+  def isSymbol(c: Char): Boolean = !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n'
 
+  def jumpLeft(l: LazyList[(Char, Pos)]): Pos = {
     val s = l dropWhile { case (c, _) => isSpace(c) }
 
     if (s.isEmpty) Pos(0, 0)
@@ -178,11 +179,32 @@ class TextModel(var path: String, init: String = null) {
       else if (isDelimiter(c))
         (s takeWhile (_._1 == c) last)._2
       else
-        (s takeWhile { case (c, _) => !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n' } last)._2
+        (s takeWhile { case (c, _) => isSymbol(c) } last)._2
     }
   }
 
-  def leftWord(p: Pos): Pos = jump(leftLazyList(p))
+  def jumpRight(l: LazyList[(Char, Pos)]): Pos = {
+    val s = l dropWhile { case (c, _) => isSpace(c) }
+
+    if (s.isEmpty) end
+    else {
+      val c = s.head._1
+      val r =
+        if (isWordChar(c)) {
+          s dropWhile { case (c, _) => isWordChar(c) }
+        } else if (c == '\n')
+          s.tail
+        else if (isDelimiter(c))
+          s dropWhile (_._1 == c)
+        else
+          s dropWhile { case (c, _) => isSymbol(c) }
+
+      if (r.isEmpty) end
+      else r.head._2
+    }
+  }
+
+  def leftWord(p: Pos): Pos = jumpLeft(leftLazyList(p))
 
   def right(p: Pos): Option[Pos] = {
     val char         = col2char(p)
@@ -193,7 +215,7 @@ class TextModel(var path: String, init: String = null) {
     else None
   }
 
-  def rightWord(p: Pos): Pos = jump(rightLazyList(p))
+  def rightWord(p: Pos): Pos = jumpRight(rightLazyList(p))
 
   def backspace(p: Pos): Option[Pos] = left(p) map (np => delete(np, 1))
 
@@ -209,7 +231,7 @@ class TextModel(var path: String, init: String = null) {
     if (autosaveTimer ne null)
       Event.cancel(autosaveTimer)
 
-    autosaveTimer = Event.timeout(2 * 1000) { save() }
+    autosaveTimer = Event.timeout(5 * 1000) { save() }
     Event(DocumentModifiedEvent(this))
     unsaved = true
   }
@@ -223,6 +245,7 @@ class TextModel(var path: String, init: String = null) {
     w.close()
     Event(DocumentSaveEvent(this))
     unsaved = false
+    Event.cancel(autosaveTimer)
   }
 
   def insertTab(p: Pos, noaction: Boolean = false): Pos = {
