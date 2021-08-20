@@ -19,13 +19,6 @@ object Event {
     while (running) {
       now = System.currentTimeMillis()
 
-      get foreach { e =>
-        reactions foreach { r =>
-          if (r isDefinedAt e)
-            r(e)
-        }
-      }
-
       timers.toList foreach {
         case t @ Timeout(expires, action) =>
           if (now >= expires) {
@@ -35,6 +28,13 @@ object Event {
       }
 
       phases foreach (_())
+
+      get foreach { e =>
+        reactions foreach { r =>
+          if (r isDefinedAt e)
+            r(e)
+        }
+      }
     }
   }
 
