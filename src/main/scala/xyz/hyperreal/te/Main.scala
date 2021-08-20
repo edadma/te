@@ -58,15 +58,23 @@ object Main extends App {
 
       def tabs(): Unit = Zone { implicit z =>
         move(1, 0)
+        wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
+        clrtoeol
+        move(1, 0)
 
         for (b <- buffers) {
-          attron(A_REVERSE | A_DIM)
-          addstr(
-            toCString(
-              s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '}${if (b ne buffers.last) " | "
-              else ""}"))
-          attroff(A_REVERSE | A_DIM)
+          addstr(toCString(s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '} "))
+          addch(ACS_VLINE)
         }
+
+        //        for (b <- buffers) {
+//          attron(A_REVERSE | A_DIM)
+//          addstr(
+//            toCString(
+//              s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '}${if (b ne buffers.last) " | "
+//              else ""}"))
+//          attroff(A_REVERSE | A_DIM)
+//        }
 
         refresh
         view.cursor(pos)
