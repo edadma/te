@@ -16,7 +16,7 @@ object Main extends App {
 
     OParser.sequence(
       programName("te"),
-      head("Terminal Editor", "v0.1.0"),
+      head("Terminal Editor", "v0.1.0.alpha"),
       help('h', "help").text("prints this usage text"),
       opt[String]('e', "encoding")
         .optional()
