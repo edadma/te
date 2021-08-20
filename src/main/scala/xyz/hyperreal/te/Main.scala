@@ -4,10 +4,11 @@ import scopt.OParser
 import xyz.hyperreal.ncurses.LibNCurses._
 
 import java.io.File
+import scala.collection.mutable.ArrayBuffer
 import scala.scalanative.unsafe._
 
 object Main extends App {
-  case class Config(file: Option[File], encoding: String)
+  case class Config(file: File, encoding: String)
 
   val builder = OParser.builder[Config]
 
@@ -29,64 +30,50 @@ object Main extends App {
           else failure(s"invalid character encoding scheme: $e"))
         .text("set character encoding scheme"),
       version('v', "version").text("prints the version"),
-      arg[Option[File]]("<file>")
+      arg[File]("<file>")
         .optional()
         .action((f, c) => c.copy(file = f))
         .validate(f =>
-          if (!f.get.exists || f.get.isFile && f.get.canRead) success
+          if (!f.exists || f.isFile && f.canRead) success
           else failure("<file> must be a readable file if it exists"))
         .text("path to text file to open")
     )
   }
 
-  OParser.parse(parser, args, Config(None, "UTF-8")) match {
-    case Some(Config(Some(file), enc)) => app(file, enc)
-    case Some(Config(None, enc))       => app(new File("untitled"), enc)
-    case _                             =>
+  OParser.parse(parser, args, Config(new File("untitled"), "UTF-8")) match {
+    case Some(Config(file, enc)) => app(file, enc)
+    case _                       =>
   }
 
   def app(file: File, enc: String): Unit = {
     initscr
 
-    //  val init     = Files.readString(Paths.get("build.sbt"))
-    val init = {
+    val init =
       if (file.exists) util.Using(io.Source.fromFile(file.getPath, enc))(_.mkString).get
       else ""
-    }
-//    val init =
-//      """
-//      | 1
-//      | 2
-//      | 3
-//      | 4
-//      | 5
-//      | 6
-//      | 7
-//      | 8
-//      | 9
-//      |10
-//      |11
-//      |12
-//      |13
-//      |14
-//      |15
-//      |16
-//      |17
-//      |18
-//      |19
-//      |20
-//      |21
-//      |22
-//      |23
-//      |24
-//      |25
-//      |""".trim.stripMargin
     val view                  = new TextView(new TextModel(file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    val buffers               = new ArrayBuffer[TextView] :+ view
     var pos: Pos              = null
     var notification: String  = ""
     var removalTimer: Timeout = null
 
     def home(): Unit = cursor(Pos(0, 0))
+
+    def tabs(): Unit = Zone { implicit z =>
+      move(1, 0)
+
+      for (b <- buffers) {
+        attron(A_REVERSE | A_DIM)
+        addstr(
+          toCString(
+            s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '}${if (b ne buffers.last) " | "
+            else ""}"))
+        attroff(A_REVERSE | A_DIM)
+      }
+
+      refresh
+      view.cursor(pos)
+    }
 
     def cursor(p: Pos): Unit = {
       pos = p
@@ -120,6 +107,15 @@ object Main extends App {
       case DocumentLoadEvent(views) =>
         views foreach (_.viewport(0))
         home()
+        tabs()
+      case DocumentSaveEvent(model) =>
+        tabs()
+
+        if (removalTimer ne null)
+          Event.cancel(removalTimer)
+
+        notify(s""""${model.path}" saved""")
+        removalTimer = Event.timeout(5 * 1000) { notify("") }
       case LinesChangeEvent(views, line) =>
         for (v <- views)
           v.renderToBottom(v.visibleFrom(line))
@@ -133,7 +129,7 @@ object Main extends App {
 
         view.cursor(pos)
       case SegmentChangeEvent(views, line, from, count, chars) =>
-      case DocumentModifiedEvent(model)                        =>
+      case DocumentModifiedEvent(model)                        => tabs()
       case KeyEvent("^C")                                      => Event.stop() //todo: remove this case
       case KeyEvent("KEY_HOME")                                => view.model.startOfLine(pos) foreach cursor
       case KeyEvent("KEY_END")                                 => view.model.endOfLine(pos) foreach cursor
@@ -161,12 +157,6 @@ object Main extends App {
         }
       case KeyEvent(k) if k.startsWith("^") && k.length > 1 =>
       case KeyEvent(s)                                      => cursor(view.model.insert(pos, s.head))
-      case NotificationEvent(text) =>
-        if (removalTimer ne null)
-          Event.cancel(removalTimer)
-
-        notify(text)
-        removalTimer = Event.timeout(5 * 1000) { notify("") }
       case ResizeEvent =>
         view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
 

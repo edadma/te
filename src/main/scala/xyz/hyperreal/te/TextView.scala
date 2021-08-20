@@ -5,7 +5,8 @@ import xyz.hyperreal.ncurses.LibNCurses._
 import scala.scalanative.unsafe._
 
 class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
-  val win: WINDOW = newwin(nlines, ncols, begin_y, begin_x)
+  val win: WINDOW  = newwin(nlines, ncols, begin_y, begin_x)
+  val panel: PANEL = new_panel(win)
 
   model subscribe this
 

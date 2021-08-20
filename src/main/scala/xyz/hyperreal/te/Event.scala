@@ -69,7 +69,7 @@ case class LineChangeEvent(views: Seq[TextView], line: Int, from: Int, chars: St
 case class LinesChangeEvent(views: Seq[TextView], line: Int)                                         extends Event
 case class DocumentModifiedEvent(model: TextModel)                                                   extends Event
 case class DocumentLoadEvent(views: Seq[TextView])                                                   extends Event
+case class DocumentSaveEvent(model: TextModel)                                                       extends Event
 case class KeyEvent(key: String)                                                                     extends Event
 case class MouseEvent(e: String)                                                                     extends Event
-case class NotificationEvent(text: String)                                                           extends Event
 case object ResizeEvent                                                                              extends Event

@@ -19,6 +19,7 @@ class TextModel(val path: String, init: String = null) {
 
   var exptabs = false
   var tabs    = 2
+  var unsaved = false
 
   if (init == null)
     textBuffer += new ArrayBuffer[Char]
@@ -139,6 +140,7 @@ class TextModel(val path: String, init: String = null) {
 
     autosaveTimer = Event.timeout(2 * 1000) { save() }
     Event(DocumentModifiedEvent(this))
+    unsaved = true
   }
 
   def save(): Unit = {
@@ -148,7 +150,8 @@ class TextModel(val path: String, init: String = null) {
       w.println(l.mkString)
 
     w.close()
-    Event(NotificationEvent(s""""$path" saved"""))
+    Event(DocumentSaveEvent(this))
+    unsaved = false
   }
 
   def insertTab(p: Pos, noaction: Boolean = false): Pos = {
