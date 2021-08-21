@@ -151,9 +151,9 @@ object Main extends App {
         case KeyEvent("KEY_BACKSPACE")                           => view.model.backspace(pos) foreach cursor
         case KeyEvent("KEY_DC")                                  => view.cursor(view.model.delete(pos, 1))
         case KeyEvent("kLFT5")                                   => view.model.leftWord(pos) foreach cursor
-        case KeyEvent("kRIT5")                                   => cursor(view.model.rightWord(pos))
+        case KeyEvent("kRIT5")                                   => view.model.rightWord(pos) foreach cursor
         case KeyEvent("^H")                                      => view.model.backspaceWord(pos) foreach cursor
-        case KeyEvent("kDC5")                                    =>
+        case KeyEvent("kDC5")                                    => view.model.deleteWord(pos) foreach cursor
         case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
         case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
         case KeyEvent("^S")                                      => view.model.save()

@@ -198,24 +198,28 @@ class TextModel(var path: String, init: String = null) {
       }
     }
 
-  def jumpRight(l: LazyList[(Char, Pos)]): Pos = {
-    val s = l dropWhile { case (c, _) => isSpace(c) }
-
-    if (s.isEmpty) end
+  def jumpRight(l: LazyList[(Char, Pos)]): Option[Pos] = {
+    if (l.isEmpty) None
     else {
-      val c = s.head._1
-      val r =
-        if (isWordChar(c)) {
-          s dropWhile { case (c, _) => isWordChar(c) }
-        } else if (c == '\n')
-          s.tail
-        else if (isDelimiter(c))
-          s dropWhile (_._1 == c)
-        else
-          s dropWhile { case (c, _) => isSymbol(c) }
+      val s = l dropWhile { case (c, _) => isSpace(c) }
 
-      if (r.isEmpty) end
-      else r.head._2
+      Some(
+        if (s.isEmpty) end
+        else {
+          val c = s.head._1
+          val r =
+            if (isWordChar(c)) {
+              s dropWhile { case (c, _) => isWordChar(c) }
+            } else if (c == '\n')
+              s.tail
+            else if (isDelimiter(c))
+              s dropWhile (_._1 == c)
+            else
+              s dropWhile { case (c, _) => isSymbol(c) }
+
+          if (r.isEmpty) end
+          else r.head._2
+        })
     }
   }
 
@@ -230,7 +234,7 @@ class TextModel(var path: String, init: String = null) {
     else None
   }
 
-  def rightWord(p: Pos): Pos = jumpRight(rightLazyList(p))
+  def rightWord(p: Pos): Option[Pos] = jumpRight(rightLazyList(p))
 
   def eol(line: Int): Int = textBuffer(line).length
 
@@ -247,6 +251,8 @@ class TextModel(var path: String, init: String = null) {
   def backspace(p: Pos): Option[Pos] = left(p) map (np => delete(np, 1))
 
   def backspaceWord(p: Pos): Option[Pos] = jumpLeft(leftLazyList(p), move = false) map (np => delete(np, chars(p, np)))
+
+  def deleteWord(p: Pos): Option[Pos] = jumpRight(rightLazyList(p)) map (np => delete(p, chars(p, np)))
 
   def views: List[TextView] = subscribers.toList
 
