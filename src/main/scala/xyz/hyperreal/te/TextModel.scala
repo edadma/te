@@ -44,7 +44,7 @@ class TextModel(var path: String, init: String = null) {
   def undo: Pos =
     undoBuffer.pop() match {
       case InsertAction(n, before, _) => delete(before, n, noaction = true)
-      case DeleteAction(s, after)     => insert(after, s.head, noaction = true)
+      case DeleteAction(s, after)     => insert(after, s, noaction = true)
       case DeleteBreakAction(after)   => insertBreak(after, noaction = true)
       case DeleteTabAction(after)     => insertTab(after, noaction = true)
     }
@@ -129,7 +129,7 @@ class TextModel(var path: String, init: String = null) {
           (textBuffer(line)(char), char2col(line, char))
         } else if (line > 0) {
           line -= 1
-          char = textBuffer(line).length
+          char = eol(line)
           ('\n', char2col(line, char))
         } else
           throw new NoSuchElementException("no more characters to the left")
@@ -140,10 +140,10 @@ class TextModel(var path: String, init: String = null) {
       private var char = col2char(p)
       private var line = p.line
 
-      def hasNext: Boolean = char < textBuffer(line).length || line < textBuffer.length - 1
+      def hasNext: Boolean = char < eol(line) || line < textBuffer.length - 1
 
       def next(): (Char, Pos) =
-        if (char < textBuffer(line).length) {
+        if (char < eol(line)) {
           val res = (textBuffer(line)(char), char2col(line, char))
 
           char += 1
@@ -165,24 +165,26 @@ class TextModel(var path: String, init: String = null) {
 
   def isSymbol(c: Char): Boolean = !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n'
 
-  def jumpLeft(l: LazyList[(Char, Pos)]): Option[Pos] = {
-    val s = l dropWhile { case (c, _) => isSpace(c) }
-
-    if (s.isEmpty) None
+  def jumpLeft(l: LazyList[(Char, Pos)] /*, move: Boolean*/ ): Option[Pos] =
+    if (l.isEmpty) None
     else {
-      val c = s.head._1
+      val s = l dropWhile { case (c, _) => isSpace(c) }
 
-      Some(
-        if (isWordChar(c))
-          (s takeWhile { case (c, _) => isWordChar(c) } last)._2
-        else if (c == '\n')
-          s.head._2
-        else if (isDelimiter(c))
-          (s takeWhile (_._1 == c) last)._2
-        else
-          (s takeWhile { case (c, _) => isSymbol(c) } last)._2)
+      if (s.isEmpty) Some(Pos(0, 0))
+      else {
+        val c = s.head._1
+
+        Some(
+          if (isWordChar(c))
+            (s takeWhile { case (c, _) => isWordChar(c) } last)._2
+          else if (c == '\n')
+            s.head._2
+          else if (isDelimiter(c))
+            (s takeWhile (_._1 == c) last)._2
+          else
+            (s takeWhile { case (c, _) => isSymbol(c) } last)._2)
+      }
     }
-  }
 
   def jumpRight(l: LazyList[(Char, Pos)]): Pos = {
     val s = l dropWhile { case (c, _) => isSpace(c) }
@@ -211,26 +213,34 @@ class TextModel(var path: String, init: String = null) {
     val char         = col2char(p)
     val Pos(line, _) = p
 
-    if (char < textBuffer(line).length) Some(char2col(line, char + 1))
+    if (char < eol(line)) Some(char2col(line, char + 1))
     else if (line < textBuffer.length - 1) Some(Pos(line + 1, 0))
     else None
   }
 
   def rightWord(p: Pos): Pos = jumpRight(rightLazyList(p))
 
+  def eol(line: Int): Int = textBuffer(line).length
+
+  def chars(p1: Pos, p2: Pos): Int = {
+    val List(a, b) = List(p1, p2).sorted
+
+    if (a.line != b.line) {
+      if (a.col == eol(a.line) && b.col == 0) 1
+      else sys.error(s"chars: different by more than lf")
+    } else col2char(b) - col2char(a)
+
+  }
+
   def backspace(p: Pos): Option[Pos] = left(p) map (np => delete(np, 1))
 
-  def backspaceWord(p: Pos): Option[Pos] = {
-    val l = leftLazyList(p)
-
-    jumpLeft(l) map (np => delete(np, l.length))
-  }
+  def backspaceWord(p: Pos): Option[Pos] = jumpLeft(leftLazyList(p)) map (np => delete(np, chars(p, np)))
 
   def views: List[TextView] = subscribers.toList
 
   def slice(line: Int, from: Int, until: Int): String = textBuffer(line).slice(from, until).mkString
 
-  def slice(line: Int, from: Int): String = slice(line, from, textBuffer(line).length)
+  def slice(line: Int, from: Int): String = slice(line, from, eol(line))
 
   var autosaveTimer: Timeout = _
 
@@ -276,11 +286,11 @@ class TextModel(var path: String, init: String = null) {
     val Pos(line, _) = p
 
     textBuffer.insert(line + 1,
-                      if (textBuffer(line).length > char) textBuffer(line).slice(char, textBuffer(line).length)
+                      if (eol(line) > char) textBuffer(line).slice(char, eol(line))
                       else new ArrayBuffer[Char])
 
-    if (textBuffer(line).length > char) {
-      textBuffer(line).remove(char, textBuffer(line).length - char)
+    if (eol(line) > char) {
+      textBuffer(line).remove(char, eol(line) - char)
       Event(LinesChangeEvent(views, line))
     } else
       Event(LinesChangeEvent(views, line + 1))
@@ -293,25 +303,25 @@ class TextModel(var path: String, init: String = null) {
     else action(InsertAction(1, p, after))
   }
 
-  def insert(p: Pos, c: Char, noaction: Boolean = false): Pos = {
+  def insert(p: Pos, s: String, noaction: Boolean = false): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
 
-    textBuffer(line).insert(char, c)
+    textBuffer(line).insertAll(char, s)
     Event(LineChangeEvent(views, line, col, slice(line, char)))
     modified()
 
-    val after = Pos(line, col + 1)
+    val after = Pos(line, col + s.length)
 
     if (noaction) after
-    else action(InsertAction(1, p, after))
+    else action(InsertAction(s.length, p, after))
   }
 
   def delete(p: Pos, n: Int, noaction: Boolean = false): Pos = {
     val char           = col2char(p)
     val Pos(line, col) = p
     val a =
-      if (char < textBuffer(line).length) {
+      if (char < eol(line)) {
         val s = textBuffer(line).slice(char, char + n).mkString
 
         textBuffer(line).remove(char, n)

@@ -159,15 +159,11 @@ object Main extends App {
         case KeyEvent("^S")                                      => view.model.save()
         case KeyEvent("^Z") =>
           view.model.afterLast match {
-            case Some(after) =>
-              if (after != pos)
-                cursor(after)
-              else
-                cursor(view.model.undo)
-            case None =>
+            case Some(after) => cursor(if (after != pos) after else view.model.undo)
+            case None        =>
           }
         case KeyEvent(k) if k.startsWith("^") && k.length > 1 =>
-        case KeyEvent(s)                                      => cursor(view.model.insert(pos, s.head))
+        case KeyEvent(s)                                      => cursor(view.model.insert(pos, s))
         case ResizeEvent =>
           view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
           tabs()
@@ -210,7 +206,13 @@ object Main extends App {
   }
 }
 
-case class Pos(line: Int, col: Int)
+case class Pos(line: Int, col: Int) extends Ordered[Pos] {
+  def compare(that: Pos): CInt =
+    line compare that.line match {
+      case c if c == 0 => col compare that.col
+      case c           => c
+    }
+}
 
 /*
 TODO: handle resizing in a nice way
