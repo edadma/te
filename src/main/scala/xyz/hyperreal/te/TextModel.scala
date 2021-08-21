@@ -165,10 +165,22 @@ class TextModel(var path: String, init: String = null) {
 
   def isSymbol(c: Char): Boolean = !isWordChar(c) && !isSpace(c) && !isDelimiter(c) && c != '\n'
 
-  def jumpLeft(l: LazyList[(Char, Pos)] /*, move: Boolean*/ ): Option[Pos] =
+  def jumpLeft(l: LazyList[(Char, Pos)], move: Boolean): Option[Pos] =
     if (l.isEmpty) None
     else {
-      val s = l dropWhile { case (c, _) => isSpace(c) }
+      val s =
+        if (move) {
+          l dropWhile { case (c, _) => isSpace(c) }
+        } else {
+          if (l.isEmpty || l.head._1 == '\n') l
+          else {
+            val a = l dropWhile { case (c, _) => isSpace(c) }
+
+            if (a.nonEmpty && a.head._1 == '\n')
+              return Some(l.drop((l takeWhile { case (c, _) => isSpace(c) }).length - 1).head._2)
+            else a
+          }
+        }
 
       if (s.isEmpty) Some(Pos(0, 0))
       else {
@@ -207,7 +219,7 @@ class TextModel(var path: String, init: String = null) {
     }
   }
 
-  def leftWord(p: Pos): Option[Pos] = jumpLeft(leftLazyList(p))
+  def leftWord(p: Pos): Option[Pos] = jumpLeft(leftLazyList(p), move = true)
 
   def right(p: Pos): Option[Pos] = {
     val char         = col2char(p)
@@ -234,7 +246,7 @@ class TextModel(var path: String, init: String = null) {
 
   def backspace(p: Pos): Option[Pos] = left(p) map (np => delete(np, 1))
 
-  def backspaceWord(p: Pos): Option[Pos] = jumpLeft(leftLazyList(p)) map (np => delete(np, chars(p, np)))
+  def backspaceWord(p: Pos): Option[Pos] = jumpLeft(leftLazyList(p), move = false) map (np => delete(np, chars(p, np)))
 
   def views: List[TextView] = subscribers.toList
 
