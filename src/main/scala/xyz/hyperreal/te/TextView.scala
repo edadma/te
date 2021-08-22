@@ -1,6 +1,6 @@
 package xyz.hyperreal.te
 
-import xyz.hyperreal.ncurses.LibNCurses._
+import xyz.hyperreal.ncurses.LibNcurses._
 
 import scala.scalanative.unsafe._
 

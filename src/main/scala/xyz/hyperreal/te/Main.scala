@@ -1,11 +1,12 @@
 package xyz.hyperreal.te
 
 import scopt.OParser
-import xyz.hyperreal.ncurses.LibNCurses._
+import xyz.hyperreal.ncurses.LibNcurses._
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import scala.scalanative.unsafe._
+import scala.scalanative.unsigned.UnsignedRichInt
 
 object Main extends App {
   case class Config(file: File, encoding: String)
@@ -58,7 +59,7 @@ object Main extends App {
 
       def tabs(): Unit = Zone { implicit z =>
         move(1, 0)
-        wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
+        wbkgdset(stdscr, (' ' | A_REVERSE | A_DIM).toUInt)
         clrtoeol
         move(1, 0)
 
@@ -83,14 +84,14 @@ object Main extends App {
 
       def status(): Unit = Zone { implicit z =>
         move(getmaxy(stdscr) - 1, 0)
-        wbkgdset(stdscr, ' ' | A_REVERSE | A_DIM)
+        wbkgdset(stdscr, (' ' | A_REVERSE | A_DIM).toUInt)
 
         val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2 spaces  exp"
 
         clrtoeol
         mvaddstr(getmaxy(stdscr) - 1, 0, toCString(notification))
         mvaddstr(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length, toCString(status))
-        wbkgdset(stdscr, ' ')
+        wbkgdset(stdscr, ' '.toUInt)
         refresh
         view.cursor(pos)
       }
