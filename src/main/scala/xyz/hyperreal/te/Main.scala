@@ -67,15 +67,6 @@ object Main extends App {
           addch(ACS_VLINE)
         }
 
-        //        for (b <- buffers) {
-//          attron(A_REVERSE | A_DIM)
-//          addstr(
-//            toCString(
-//              s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '}${if (b ne buffers.last) " | "
-//              else ""}"))
-//          attroff(A_REVERSE | A_DIM)
-//        }
-
         refresh
         view.cursor(pos)
       }
@@ -103,10 +94,6 @@ object Main extends App {
         refresh
         view.cursor(pos)
       }
-
-      //    Event.reactions += {
-      //      case e => log(e)
-      //    }
 
       Event.reactions += {
         case DocumentLoadEvent(views) =>
@@ -137,26 +124,31 @@ object Main extends App {
           view.cursor(pos)
         case SegmentChangeEvent(views, line, from, count, chars) =>
         case DocumentModifiedEvent(model)                        => tabs()
-        case KeyEvent("^C")                                      => Event.stop() //todo: remove this case
-        case KeyEvent("KEY_HOME")                                => view.model.startOfLine(pos) foreach cursor
-        case KeyEvent("KEY_END")                                 => view.model.endOfLine(pos) foreach cursor
-        case KeyEvent("kHOM5")                                   => home()
-        case KeyEvent("kEND5")                                   => cursor(view.model.end)
-        case KeyEvent("KEY_PPAGE")                               => view.model.up(pos, view.height) foreach cursor
-        case KeyEvent("KEY_NPAGE")                               => view.model.down(pos, view.height) foreach cursor
-        case KeyEvent("KEY_UP")                                  => view.model.up(pos, 1) foreach cursor
-        case KeyEvent("KEY_DOWN")                                => view.model.down(pos, 1) foreach cursor
-        case KeyEvent("KEY_LEFT")                                => view.model.left(pos) foreach cursor
-        case KeyEvent("KEY_RIGHT")                               => view.model.right(pos) foreach cursor
-        case KeyEvent("KEY_BACKSPACE")                           => view.model.backspace(pos) foreach cursor
-        case KeyEvent("KEY_DC")                                  => view.cursor(view.model.delete(pos, 1))
-        case KeyEvent("kLFT5")                                   => view.model.leftWord(pos) foreach cursor
-        case KeyEvent("kRIT5")                                   => view.model.rightWord(pos) foreach cursor
-        case KeyEvent("^H")                                      => view.model.backspaceWord(pos) foreach cursor
-        case KeyEvent("kDC5")                                    => view.model.deleteWord(pos) foreach cursor
-        case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
-        case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
-        case KeyEvent("^S")                                      => view.model.save()
+        case KeyEvent("^Q") =>
+          for (b <- buffers)
+            if (b.model.unsaved)
+              b.model.save()
+
+          Event.stop()
+        case KeyEvent("KEY_HOME")      => view.model.startOfLine(pos) foreach cursor
+        case KeyEvent("KEY_END")       => view.model.endOfLine(pos) foreach cursor
+        case KeyEvent("kHOM5")         => home()
+        case KeyEvent("kEND5")         => cursor(view.model.end)
+        case KeyEvent("KEY_PPAGE")     => view.model.up(pos, view.height) foreach cursor
+        case KeyEvent("KEY_NPAGE")     => view.model.down(pos, view.height) foreach cursor
+        case KeyEvent("KEY_UP")        => view.model.up(pos, 1) foreach cursor
+        case KeyEvent("KEY_DOWN")      => view.model.down(pos, 1) foreach cursor
+        case KeyEvent("KEY_LEFT")      => view.model.left(pos) foreach cursor
+        case KeyEvent("KEY_RIGHT")     => view.model.right(pos) foreach cursor
+        case KeyEvent("KEY_BACKSPACE") => view.model.backspace(pos) foreach cursor
+        case KeyEvent("KEY_DC")        => view.cursor(view.model.delete(pos, 1))
+        case KeyEvent("kLFT5")         => view.model.leftWord(pos) foreach cursor
+        case KeyEvent("kRIT5")         => view.model.rightWord(pos) foreach cursor
+        case KeyEvent("^H")            => view.model.backspaceWord(pos) foreach cursor
+        case KeyEvent("kDC5")          => view.model.deleteWord(pos) foreach cursor
+        case KeyEvent("^J")            => cursor(view.model.insertBreak(pos))
+        case KeyEvent("^I")            => cursor(view.model.insertTab(pos))
+        case KeyEvent("^S")            => view.model.save()
         case KeyEvent("^Z") =>
           view.model.afterLast match {
             case Some(after) => cursor(if (after != pos) after else view.model.undo)
