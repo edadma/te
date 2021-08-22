@@ -1,12 +1,10 @@
 package xyz.hyperreal.te
 
 import scopt.OParser
-import xyz.hyperreal.ncurses.LibNcurses._
+import xyz.hyperreal.ncurses._
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
-import scala.scalanative.unsafe._
-import scala.scalanative.unsigned.UnsignedRichInt
 
 object Main extends App {
   case class Config(file: File, encoding: String)
@@ -48,7 +46,7 @@ object Main extends App {
     val init =
       if (conf.file.exists) util.Using(io.Source.fromFile(conf.file.getPath, conf.encoding))(_.mkString).get
       else ""
-    val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), stdscr.getmaxy - 3, stdscr.getmaxx, 2, 0)
     try {
       val buffers               = new ArrayBuffer[TextView] :+ view
       var pos: Pos              = null
@@ -57,14 +55,15 @@ object Main extends App {
 
       def home(): Unit = cursor(Pos(0, 0))
 
-      def tabs(): Unit = Zone { implicit z =>
+      def tabs(): Unit = {
         move(1, 0)
-        wbkgdset(stdscr, (' ' | A_REVERSE | A_DIM).toUInt)
+
+        bkgdset(' ' | A_REVERSE | A_DIM)
         clrtoeol
         move(1, 0)
 
         for (b <- buffers) {
-          addstr(toCString(s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '} "))
+          addstr(s" ${new File(b.model.path).getName} ${if (b.model.unsaved) '*' else ' '} ")
           addch(ACS_VLINE)
         }
 
@@ -82,16 +81,16 @@ object Main extends App {
         status()
       }
 
-      def status(): Unit = Zone { implicit z =>
-        move(getmaxy(stdscr) - 1, 0)
-        wbkgdset(stdscr, (' ' | A_REVERSE | A_DIM).toUInt)
+      def status(): Unit = {
+        move(stdscr.getmaxy - 1, 0)
+        bkgdset(' ' | A_REVERSE | A_DIM)
 
         val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2 spaces  exp"
 
         clrtoeol
-        mvaddstr(getmaxy(stdscr) - 1, 0, toCString(notification))
-        mvaddstr(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length, toCString(status))
-        wbkgdset(stdscr, ' '.toUInt)
+        mvaddstr(stdscr.getmaxy - 1, 0, notification)
+        mvaddstr(stdscr.getmaxy - 1, stdscr.getmaxx - status.length, status)
+        bkgdset(' ')
         refresh
         view.cursor(pos)
       }
@@ -115,7 +114,7 @@ object Main extends App {
           for (v <- views)
             v.renderToBottom(v.visibleFrom(line))
 
-          wclrtobot(view.win)
+          clrtobot
           view.cursor(pos)
         case LineChangeEvent(views, line, from, chars) =>
           for (v <- views)
@@ -158,7 +157,7 @@ object Main extends App {
         case KeyEvent(k) if k.startsWith("^") && k.length > 1 =>
         case KeyEvent(s)                                      => cursor(view.model.insert(pos, s))
         case ResizeEvent =>
-          view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
+          view.resize(stdscr.getmaxy - 3, stdscr.getmaxx)
           tabs()
 
           val p = pos copy (line = pos.line min (view.top + view.height - 1))
@@ -167,10 +166,10 @@ object Main extends App {
       }
 
       Event phase {
-        val k = wgetch(view.win)
+        val k = view.win.getch
 
         if (k != ERR)
-          fromCString(keyname(k)) match {
+          keyname(k) match {
             case "KEY_MOUSE"  => Event(MouseEvent(""))
             case "KEY_RESIZE" => Event(ResizeEvent)
             case k            => Event(KeyEvent(k))
@@ -179,9 +178,9 @@ object Main extends App {
 
       raw
       noecho
-      keypad(view.win, bf = true)
-      scrollok(view.win, bf = true)
-      nodelay(view.win, bf = true)
+      view.win.keypad(bf = true)
+      view.win.scrollok(bf = true)
+      view.win.nodelay(bf = true)
       Event(DocumentLoadEvent(Seq(view)))
       Event.start()
       endwin
@@ -200,7 +199,7 @@ object Main extends App {
 }
 
 case class Pos(line: Int, col: Int) extends Ordered[Pos] {
-  def compare(that: Pos): CInt =
+  def compare(that: Pos): Int =
     line compare that.line match {
       case c if c == 0 => col compare that.col
       case c           => c

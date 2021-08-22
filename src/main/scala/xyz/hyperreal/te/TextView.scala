@@ -1,19 +1,17 @@
 package xyz.hyperreal.te
 
-import xyz.hyperreal.ncurses.LibNcurses._
-
-import scala.scalanative.unsafe._
+import xyz.hyperreal.ncurses._
 
 class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
-  val win: WINDOW  = newwin(nlines, ncols, begin_y, begin_x)
-  val panel: PANEL = new_panel(win)
+  val win: Window  = newwin(nlines, ncols, begin_y, begin_x)
+  val panel: Panel = win.new_panel
 
   model subscribe this
 
   var top: Int = _
 
   def resize(lines: Int, cols: Int): Unit = {
-    wresize(win, lines, cols)
+    win.wresize(lines, cols)
     render()
   }
 
@@ -23,7 +21,7 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
 
   def renderToBottom(range: Seq[Int]): Unit = {
     render(range)
-    wclrtobot(win)
+    win.clrtobot
   }
 
   def viewport(from: Int): Unit = {
@@ -31,18 +29,18 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
     render()
   }
 
-  def render(line: Int, from: Int, chars: String): Unit = Zone { implicit z =>
-    mvwaddstr(win, line - top, from, toCString(chars))
-    wclrtoeol(win)
+  def render(line: Int, from: Int, chars: String): Unit = {
+    win.mvaddstr(line - top, from, chars)
+    win.clrtoeol
   }
 
   def render(range: Seq[Int]): Unit =
     for (i <- range)
       render(i, 0, model.getLine(i))
 
-  def width: Int = getmaxx(win)
+  def width: Int = win.getmaxx
 
-  def height: Int = getmaxy(win)
+  def height: Int = win.getmaxy
 
   def visibleLine(line: Int): Boolean = top <= line && line < top + height
 
@@ -53,7 +51,7 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
       if (p.line < top && top - p.line < height) {
         val n = top - p.line
 
-        wscrl(win, -n)
+        win.scrl(-n)
 
         val oldtop = top
 
@@ -62,18 +60,18 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
       } else if (p.line >= top + height && p.line - (top + height) < height) {
         val n = p.line - (top + height) + 1
 
-        wscrl(win, n)
+        win.scrl(n)
         top += n
         render(top + height - n until top + height)
       } else
         viewport(p.line)
     }
 
-    wmove(win, p.line - top, p.col)
+    win.move(p.line - top, p.col)
   }
 
   def close(): Unit = {
     model unsubscribe this
-    delwin(win)
+    win.delwin
   }
 }
