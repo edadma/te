@@ -1,6 +1,6 @@
 package xyz.hyperreal.te
 
-import xyz.hyperreal.ncurses._
+import xyz.hyperreal.ncurses.facade._
 
 class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
   val win: Window  = newwin(nlines, ncols, begin_y, begin_x)
