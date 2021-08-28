@@ -1,7 +1,7 @@
 package xyz.hyperreal.te
 
 import scopt.OParser
-import xyz.hyperreal.ncurses.facade._
+import io.github.edadma.ncurses.facade._
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
@@ -44,7 +44,7 @@ object Main extends App {
     initscr
 
     val init =
-      if (conf.file.exists) util.Using(io.Source.fromFile(conf.file.getPath, conf.encoding))(_.mkString).get
+      if (conf.file.exists) util.Using(scala.io.Source.fromFile(conf.file.getPath, conf.encoding))(_.mkString).get
       else ""
     val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), stdscr.getmaxy - 3, stdscr.getmaxx, 2, 0)
     try {
@@ -88,8 +88,8 @@ object Main extends App {
         val status = s"${pos.line + 1}:${pos.col + 1}  LF  UTF-8  2 spaces  exp"
 
         clrtoeol
-        mvaddstr(stdscr.getmaxy - 1, 0, notification)
-        mvaddstr(stdscr.getmaxy - 1, stdscr.getmaxx - status.length, status)
+        addstr(stdscr.getmaxy - 1, 0, notification)
+        addstr(stdscr.getmaxy - 1, stdscr.getmaxx - status.length, status)
         bkgdset(' ')
         refresh
         view.cursor(pos)
@@ -205,3 +205,40 @@ case class Pos(line: Int, col: Int) extends Ordered[Pos] {
       case c => c
     }
 }
+
+/*
+todo: bug: ctrl-del at the beginning of a line with only a single space character on it and text above and below it
+java.lang.RuntimeException: chars: different by more than lf
+	at java.lang.Throwable.fillInStackTrace(Unknown Source)
+	at scala.sys.package$.error(Unknown Source)
+	at xyz.hyperreal.te.TextModel.chars(Unknown Source)
+	at xyz.hyperreal.te.TextModel.$anonfun$deleteWord$1(Unknown Source)
+	at xyz.hyperreal.te.TextModel$$Lambda$14.apply(Unknown Source)
+	at scala.Option.map(Unknown Source)
+	at xyz.hyperreal.te.TextModel.deleteWord(Unknown Source)
+	at xyz.hyperreal.te.Main$$anonfun$app$4.applyOrElse(Unknown Source)
+	at xyz.hyperreal.te.Main$$anonfun$app$4.applyOrElse(Unknown Source)
+	at scala.runtime.AbstractPartialFunction.apply(Unknown Source)
+	at xyz.hyperreal.te.Event$.$anonfun$start$4(Unknown Source)
+	at xyz.hyperreal.te.Event$$$Lambda$4.apply(Unknown Source)
+	at scala.collection.IterableOnceOps.foreach(Unknown Source)
+	at scala.collection.AbstractIterable.foreach(Unknown Source)
+	at xyz.hyperreal.te.Event$.$anonfun$start$3(Unknown Source)
+	at xyz.hyperreal.te.Event$$$Lambda$3.apply(Unknown Source)
+	at scala.Option.foreach(Unknown Source)
+	at xyz.hyperreal.te.Event$.start(Unknown Source)
+	at xyz.hyperreal.te.Main$.app(Unknown Source)
+	at xyz.hyperreal.te.Main$.delayedEndpoint$xyz$hyperreal$te$Main$1(Unknown Source)
+	at xyz.hyperreal.te.Main$delayedInit$body.apply(Unknown Source)
+	at scala.Function0.apply$mcV$sp(Unknown Source)
+	at scala.runtime.AbstractFunction0.apply$mcV$sp(Unknown Source)
+	at scala.App.$anonfun$main$1(Unknown Source)
+	at scala.App$$Lambda$1.apply(Unknown Source)
+	at scala.collection.IterableOnceOps.foreach(Unknown Source)
+	at scala.collection.AbstractIterable.foreach(Unknown Source)
+	at scala.App.main(Unknown Source)
+	at xyz.hyperreal.te.Main$.main(Unknown Source)
+	at <none>.main(Unknown Source)
+	at <none>.__libc_start_main(Unknown Source)
+	at <none>._start(Unknown Source)
+ */

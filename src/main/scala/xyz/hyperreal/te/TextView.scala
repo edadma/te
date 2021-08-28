@@ -1,6 +1,6 @@
 package xyz.hyperreal.te
 
-import xyz.hyperreal.ncurses.facade._
+import io.github.edadma.ncurses.facade._
 
 class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
   val win: Window  = newwin(nlines, ncols, begin_y, begin_x)
@@ -30,7 +30,7 @@ class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, 
   }
 
   def render(line: Int, from: Int, chars: String): Unit = {
-    win.mvaddstr(line - top, from, chars)
+    win.addstr(line - top, from, chars)
     win.clrtoeol
   }
 
