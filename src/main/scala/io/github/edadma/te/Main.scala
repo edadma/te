@@ -47,9 +47,9 @@ import scala.scalanative.unsafe._
     initscr
 
     val init =
-      if (conf.file.exists) util.Using(io.Source.fromFile(conf.file.getPath, conf.encoding))(_.mkString).get
+      if (conf.file.exists) util.Using(scala.io.Source.fromFile(conf.file.getPath, conf.encoding))(_.mkString).get
       else ""
-    val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
+    val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), stdscr.getmaxy - 3, stdscr.getmaxx, 2, 0)
     try {
       val buffers = new ArrayBuffer[TextView] :+ view
       var pos: Pos = null
@@ -101,7 +101,7 @@ import scala.scalanative.unsafe._
         clrtoeol
         mvaddstr(getmaxy(stdscr) - 1, 0, toCString(notification))
         mvaddstr(getmaxy(stdscr) - 1, getmaxx(stdscr) - status.length, toCString(status))
-        wbkgdset(stdscr, ' ')
+        stdscr.bkgdset(' ')
         refresh
         view.cursor(pos)
       }
@@ -129,7 +129,7 @@ import scala.scalanative.unsafe._
           for (v <- views)
             v.renderToBottom(v.visibleFrom(line))
 
-          wclrtobot(view.win)
+          view.win.clrtobot
           view.cursor(pos)
         case LineChangeEvent(views, line, from, chars) =>
           for (v <- views)
@@ -171,7 +171,7 @@ import scala.scalanative.unsafe._
         case KeyEvent(k) if k.startsWith("^") && k.length > 1 =>
         case KeyEvent(s)                                      => cursor(view.model.insert(pos, s.head))
         case ResizeEvent =>
-          view.resize(getmaxy(stdscr) - 3, getmaxx(stdscr))
+          view.resize(stdscr.getmaxy - 3, stdscr.getmaxx)
           tabs()
 
           val p = pos copy (line = pos.line min (view.top + view.height - 1))
@@ -180,10 +180,10 @@ import scala.scalanative.unsafe._
       }
 
       Event phase {
-        val k = wgetch(view.win)
+        val k = view.win.getch
 
         if (k != ERR)
-          fromCString(keyname(k)) match {
+          keyname(k) match {
             case "KEY_MOUSE"  => Event(MouseEvent(""))
             case "KEY_RESIZE" => Event(ResizeEvent)
             case k            => Event(KeyEvent(k))
@@ -192,9 +192,9 @@ import scala.scalanative.unsafe._
 
       raw
       noecho
-      keypad(view.win, bf = true)
-      scrollok(view.win, bf = true)
-      nodelay(view.win, bf = true)
+      view.win.keypad(bf = true)
+      view.win.scrollok(bf = true)
+      view.win.nodelay(bf = true)
       Event(DocumentLoadEvent(Seq(view)))
       Event.start()
       endwin
