@@ -1,4 +1,4 @@
 te
 ==
 
-*te* is a terminal (non-graphical) editor.
+*te* is an ncurses based terminal editor.

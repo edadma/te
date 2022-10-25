@@ -1,11 +1,11 @@
-package xyz.hyperreal.te
-
-import xyz.hyperreal.ncurses.LibNCurses._
+package io.github.edadma.te
 
 import scala.scalanative.unsafe._
 
+import io.github.edadma.ncurses._
+
 class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
-  val win: WINDOW  = newwin(nlines, ncols, begin_y, begin_x)
+  val win: WINDOW = newwin(nlines, ncols, begin_y, begin_x)
   val panel: PANEL = new_panel(win)
 
   model subscribe this

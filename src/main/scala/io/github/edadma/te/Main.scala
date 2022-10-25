@@ -1,13 +1,13 @@
-package xyz.hyperreal.te
+package io.github.edadma.te
 
 import scopt.OParser
-import xyz.hyperreal.ncurses.LibNCurses._
+import io.github.edadma.ncurses._
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import scala.scalanative.unsafe._
 
-object Main extends App {
+@main def run(args: String*): Unit =
   case class Config(file: File, encoding: String)
 
   val builder = OParser.builder[Config]
@@ -16,14 +16,15 @@ object Main extends App {
 
     OParser.sequence(
       programName("te"),
-      head("Terminal Editor", "v0.1.0.alpha"),
+      head("Terminal Editor", "v0.0.1"),
       help('h', "help").text("prints this usage text"),
       opt[String]('e', "encoding")
         .optional()
         .action((e, c) => c.copy(encoding = e))
         .validate(e =>
           if (e == "UTF-8") success
-          else failure(s"invalid character encoding scheme: $e"))
+          else failure(s"invalid character encoding scheme: $e"),
+        )
         .text("set character encoding scheme"),
       version('v', "version").text("prints the version"),
       arg[File]("<file>")
@@ -31,8 +32,9 @@ object Main extends App {
         .action((f, c) => c.copy(file = f))
         .validate(f =>
           if (!f.exists || f.isFile && f.canRead) success
-          else failure("<file> must be a readable file if it exists"))
-        .text("path to text file to open")
+          else failure("<file> must be a readable file if it exists"),
+        )
+        .text("path to text file to open"),
     )
   }
 
@@ -49,9 +51,9 @@ object Main extends App {
       else ""
     val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), getmaxy(stdscr) - 3, getmaxx(stdscr), 2, 0)
     try {
-      val buffers               = new ArrayBuffer[TextView] :+ view
-      var pos: Pos              = null
-      var notification: String  = ""
+      val buffers = new ArrayBuffer[TextView] :+ view
+      var pos: Pos = null
+      var notification: String = ""
       var removalTimer: Timeout = null
 
       def home(): Unit = cursor(Pos(0, 0))
@@ -137,7 +139,7 @@ object Main extends App {
           view.cursor(pos)
         case SegmentChangeEvent(views, line, from, count, chars) =>
         case DocumentModifiedEvent(model)                        => tabs()
-        case KeyEvent("^C")                                      => Event.stop() //todo: remove this case
+        case KeyEvent("^C")                                      => Event.stop() // todo: remove this case
         case KeyEvent("KEY_HOME")                                => view.model.startOfLine(pos) foreach cursor
         case KeyEvent("KEY_END")                                 => view.model.endOfLine(pos) foreach cursor
         case KeyEvent("kHOM5")                                   => home()
@@ -152,8 +154,8 @@ object Main extends App {
         case KeyEvent("KEY_DC")                                  => view.cursor(view.model.delete(pos, 1))
         case KeyEvent("kLFT5")                                   => cursor(view.model.leftWord(pos))
         case KeyEvent("kRIT5")                                   => cursor(view.model.rightWord(pos))
-        case KeyEvent("^H")                                      => //ctrl bs
-        case KeyEvent("kDC5")                                    => //ctrl del
+        case KeyEvent("^H")                                      => // ctrl bs
+        case KeyEvent("kDC5")                                    => // ctrl del
         case KeyEvent("^J")                                      => cursor(view.model.insertBreak(pos))
         case KeyEvent("^I")                                      => cursor(view.model.insertTab(pos))
         case KeyEvent("^S")                                      => view.model.save()
@@ -202,13 +204,12 @@ object Main extends App {
         view.model.path ++= ".bak"
         view.model.save()
         println(
-          s"Something bad and unexpected happened. An attempt was made to save a backup copy of your document at '${view.model.path}'.")
+          s"Something bad and unexpected happened. An attempt was made to save a backup copy of your document at '${view.model.path}'.",
+        )
         e.printStackTrace()
         sys.exit(1)
     }
-
   }
-}
 
 case class Pos(line: Int, col: Int)
 

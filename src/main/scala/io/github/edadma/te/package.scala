@@ -1,4 +1,4 @@
-package xyz.hyperreal
+package io.github.edadma
 
 import java.io.PrintWriter
 
