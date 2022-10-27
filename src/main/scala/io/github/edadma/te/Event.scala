@@ -1,4 +1,4 @@
-package xyz.hyperreal.te
+package io.github.edadma.te
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer

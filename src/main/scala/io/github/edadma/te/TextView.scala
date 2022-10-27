@@ -1,9 +1,9 @@
-package xyz.hyperreal.te
+package io.github.edadma.te
 
-import io.github.edadma.ncurses.facade._
+import io.github.edadma.ncurses._
 
 class TextView(val model: TextModel, nlines: Int, val ncols: Int, begin_y: Int, begin_x: Int) {
-  val win: Window  = newwin(nlines, ncols, begin_y, begin_x)
+  val win: Window = newwin(nlines, ncols, begin_y, begin_x)
   val panel: Panel = new_panel(win)
 
   model subscribe this

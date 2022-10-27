@@ -1,8 +1,8 @@
 name := "te"
 
-version := "0.1.0"
+version := "0.0.1"
 
-scalaVersion := "2.13.6"
+scalaVersion := "3.2.0"
 
 enablePlugins(ScalaNativePlugin)
 
@@ -19,7 +19,7 @@ scalacOptions ++= Seq("-deprecation",
                       "-language:implicitConversions",
                       "-language:existentials")
 
-organization := "xyz.hyperreal"
+organization := "io.github.edadma"
 
 githubOwner := "edadma"
 
@@ -27,41 +27,18 @@ githubRepository := name.value
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
-resolvers += "Typesafe Repository" at "https://repo.typesafe.com/typesafe/releases/"
-
 resolvers += Resolver.githubPackages("edadma")
-
-Compile / mainClass := Some("xyz.hyperreal." + name.value.replace('-', '_') + ".Main")
-
-//nativeLinkingOptions += "-v"
 
 licenses := Seq("ISC" -> url("https://opensource.org/licenses/ISC"))
 
 homepage := Some(url("https://github.com/edadma/" + name.value))
 
-libraryDependencies += "io.github.edadma" %%% "ncurses" % "0.2.3"
+libraryDependencies += "io.github.edadma" %%% "ncurses" % "0.2.6"
 
 libraryDependencies ++= Seq(
-  "com.github.scopt" %%% "scopt" % "4.0.1"
+  "com.github.scopt" %%% "scopt" % "4.1.0"
 )
 
 publishMavenStyle := true
 
 Test / publishArtifact := false
-
-pomIncludeRepository := { _ =>
-  false
-}
-
-pomExtra :=
-  <scm>
-    <url>git@github.com:edadma/{name.value}.git</url>
-    <connection>scm:git:git@github.com:edadma/{name.value}.git</connection>
-  </scm>
-    <developers>
-      <developer>
-        <id>edadma</id>
-        <name>Edward A. Maxedon, Sr.</name>
-        <url>https://github.com/edadma</url>
-      </developer>
-    </developers>

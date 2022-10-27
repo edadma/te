@@ -1,7 +1,7 @@
-package xyz.hyperreal.te
+package io.github.edadma.te
 
 import scopt.OParser
-import io.github.edadma.ncurses.facade._
+import io.github.edadma.ncurses._
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
@@ -22,7 +22,8 @@ object Main extends App {
         .action((e, c) => c.copy(encoding = e))
         .validate(e =>
           if (e == "UTF-8") success
-          else failure(s"invalid character encoding scheme: $e"))
+          else failure(s"invalid character encoding scheme: $e"),
+        )
         .text("set character encoding scheme"),
       version('v', "version").text("prints the version"),
       arg[File]("<file>")
@@ -30,8 +31,9 @@ object Main extends App {
         .action((f, c) => c.copy(file = f))
         .validate(f =>
           if (!f.exists || f.isFile && f.canRead) success
-          else failure("<file> must be a readable file if it exists"))
-        .text("path to text file to open")
+          else failure("<file> must be a readable file if it exists"),
+        )
+        .text("path to text file to open"),
     )
   }
 
@@ -48,9 +50,9 @@ object Main extends App {
       else ""
     val view = new TextView(new TextModel(conf.file.getAbsolutePath, init), stdscr.getmaxy - 3, stdscr.getmaxx, 2, 0)
     try {
-      val buffers               = new ArrayBuffer[TextView] :+ view
-      var pos: Pos              = null
-      var notification: String  = ""
+      val buffers = new ArrayBuffer[TextView] :+ view
+      var pos: Pos = null
+      var notification: String = ""
       var removalTimer: Timeout = null
 
       def home(): Unit = cursor(Pos(0, 0))
@@ -190,7 +192,8 @@ object Main extends App {
         view.model.path ++= ".bak"
         view.model.save()
         println(
-          s"Something bad and unexpected happened. An attempt was made to save a backup copy of your document at '${view.model.path}'.")
+          s"Something bad and unexpected happened. An attempt was made to save a backup copy of your document at '${view.model.path}'.",
+        )
         e.printStackTrace()
         sys.exit(1)
     }

@@ -1,4 +1,4 @@
-package xyz.hyperreal.te
+package io.github.edadma.te
 
 import java.io.PrintWriter
 import java.util.NoSuchElementException
@@ -11,21 +11,20 @@ class TextModel(var path: String, init: String = null) {
 
   abstract class Action { val after: Pos }
   case class InsertAction(n: Int, before: Pos, after: Pos) extends Action
-  case class DeleteAction(s: String, after: Pos)           extends Action
-  case class DeleteBreakAction(after: Pos)                 extends Action
-  case class DeleteTabAction(after: Pos)                   extends Action
-  case class ReplaceAction(s: String, after: Pos)          extends Action
+  case class DeleteAction(s: String, after: Pos) extends Action
+  case class DeleteBreakAction(after: Pos) extends Action
+  case class DeleteTabAction(after: Pos) extends Action
+  case class ReplaceAction(s: String, after: Pos) extends Action
 
   val subscribers = new ArrayBuffer[TextView]
 
   var exptabs = false
-  var tabs    = 2
+  var tabs = 2
   var unsaved = false
 
-  if (init == null)
-    textBuffer += new ArrayBuffer[Char]
+  if (init == null) textBuffer += new ArrayBuffer[Char]
   else {
-    for (l <- io.Source.fromString(init).getLines())
+    for (l <- scala.io.Source.fromString(init).getLines())
       textBuffer += (ArrayBuffer[Char]() ++ l)
 
     if (textBuffer.isEmpty)
@@ -57,7 +56,7 @@ class TextModel(var path: String, init: String = null) {
 
   def char2col(line: Int, char: Int): Pos = {
     var col = 0
-    val s   = textBuffer(line)
+    val s = textBuffer(line)
 
     for (i <- 0 until char)
       col += (if (s(i) == '\t') tabs - col % tabs else 1)
@@ -67,8 +66,8 @@ class TextModel(var path: String, init: String = null) {
 
   def col2char(p: Pos): Int = {
     var char = 0
-    var cur  = 0
-    val s    = textBuffer(p.line)
+    var cur = 0
+    val s = textBuffer(p.line)
 
     while (cur < p.col && char < s.length) {
       cur += (if (s(char) == '\t') tabs - cur % tabs else 1)
@@ -80,7 +79,7 @@ class TextModel(var path: String, init: String = null) {
 
   def up(p: Pos, n: Int): Option[Pos] = {
     val Pos(line, _) = p
-    val dist         = n min line
+    val dist = n min line
 
     if (dist > 0) Some(char2col(line - dist, col2char(p.copy(line = line - dist))))
     else None
@@ -88,7 +87,7 @@ class TextModel(var path: String, init: String = null) {
 
   def down(p: Pos, n: Int): Option[Pos] = {
     val Pos(line, _) = p
-    val dist         = n min (textBuffer.length - 1 - line)
+    val dist = n min (textBuffer.length - 1 - line)
 
     if (dist > 0) Some(char2col(line + dist, col2char(p.copy(line = line + dist))))
     else None
@@ -108,7 +107,7 @@ class TextModel(var path: String, init: String = null) {
   def end: Pos = char2col(textBuffer.length - 1, textBuffer(textBuffer.length - 1).length)
 
   def left(p: Pos): Option[Pos] = {
-    val char         = col2char(p)
+    val char = col2char(p)
     val Pos(line, _) = p
 
     if (char > 0) Some(char2col(line, char - 1))
@@ -194,7 +193,8 @@ class TextModel(var path: String, init: String = null) {
           else if (isDelimiter(c))
             (s takeWhile (_._1 == c) last)._2
           else
-            (s takeWhile { case (c, _) => isSymbol(c) } last)._2)
+            (s takeWhile { case (c, _) => isSymbol(c) } last)._2,
+        )
       }
     }
 
@@ -219,14 +219,15 @@ class TextModel(var path: String, init: String = null) {
 
           if (r.isEmpty) end
           else r.head._2
-        })
+        },
+      )
     }
   }
 
   def leftWord(p: Pos): Option[Pos] = jumpLeft(leftLazyList(p), move = true)
 
   def right(p: Pos): Option[Pos] = {
-    val char         = col2char(p)
+    val char = col2char(p)
     val Pos(line, _) = p
 
     if (char < eol(line)) Some(char2col(line, char + 1))
@@ -284,10 +285,10 @@ class TextModel(var path: String, init: String = null) {
   }
 
   def insertTab(p: Pos, noaction: Boolean = false): Pos = {
-    val char           = col2char(p)
+    val char = col2char(p)
     val Pos(line, col) = p
-    val spaces         = tabs - col % tabs
-    val chars          = if (exptabs) " " * spaces else "\t"
+    val spaces = tabs - col % tabs
+    val chars = if (exptabs) " " * spaces else "\t"
 
     textBuffer(line).insertAll(char, chars)
     Event(LineChangeEvent(views, line, col, slice(line, char)))
@@ -300,12 +301,14 @@ class TextModel(var path: String, init: String = null) {
   }
 
   def insertBreak(p: Pos, noaction: Boolean = false): Pos = {
-    val char         = col2char(p)
+    val char = col2char(p)
     val Pos(line, _) = p
 
-    textBuffer.insert(line + 1,
-                      if (eol(line) > char) textBuffer(line).slice(char, eol(line))
-                      else new ArrayBuffer[Char])
+    textBuffer.insert(
+      line + 1,
+      if (eol(line) > char) textBuffer(line).slice(char, eol(line))
+      else new ArrayBuffer[Char],
+    )
 
     if (eol(line) > char) {
       textBuffer(line).remove(char, eol(line) - char)
@@ -322,7 +325,7 @@ class TextModel(var path: String, init: String = null) {
   }
 
   def insert(p: Pos, s: String, noaction: Boolean = false): Pos = {
-    val char           = col2char(p)
+    val char = col2char(p)
     val Pos(line, col) = p
 
     textBuffer(line).insertAll(char, s)
@@ -336,7 +339,7 @@ class TextModel(var path: String, init: String = null) {
   }
 
   def delete(p: Pos, n: Int, noaction: Boolean = false): Pos = {
-    val char           = col2char(p)
+    val char = col2char(p)
     val Pos(line, col) = p
     val a =
       if (char < eol(line)) {
@@ -369,5 +372,5 @@ class TextModel(var path: String, init: String = null) {
           view.cursor(pos)
         }
 
- */
+   */
 }
