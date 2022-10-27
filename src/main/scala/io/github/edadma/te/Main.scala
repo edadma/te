@@ -6,7 +6,7 @@ import io.github.edadma.ncurses._
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 
-object Main extends App {
+@main def run(args: String*): Unit = {
   case class Config(file: File, encoding: String)
 
   val builder = OParser.builder[Config]
