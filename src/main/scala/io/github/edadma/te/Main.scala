@@ -15,7 +15,7 @@ import scala.collection.mutable.ArrayBuffer
 
     OParser.sequence(
       programName("te"),
-      head("Terminal Editor", "v0.1.0.alpha"),
+      head("Terminal Editor", "v0.0.1"),
       help('h', "help").text("prints this usage text"),
       opt[String]('e', "encoding")
         .optional()

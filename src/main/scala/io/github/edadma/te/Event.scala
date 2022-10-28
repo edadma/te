@@ -5,13 +5,13 @@ import scala.collection.mutable.ArrayBuffer
 
 object Event {
 
-  val events: mutable.Queue[Event]    = mutable.Queue()
-  val timers: ArrayBuffer[Timeout]    = ArrayBuffer()
+  val events: mutable.Queue[Event] = mutable.Queue()
+  val timers: ArrayBuffer[Timeout] = ArrayBuffer()
   val phases: ArrayBuffer[() => Unit] = ArrayBuffer()
 
-  var running: Boolean                                     = _
+  var running: Boolean = _
   var reactions: ArrayBuffer[PartialFunction[Event, Unit]] = ArrayBuffer()
-  var now: Long                                            = _
+  var now: Long = _
 
   def start(): Unit = {
     running = true
@@ -19,12 +19,11 @@ object Event {
     while (running) {
       now = System.currentTimeMillis()
 
-      timers.toList foreach {
-        case t @ Timeout(expires, action) =>
-          if (now >= expires) {
-            action()
-            cancel(t)
-          }
+      timers.toList foreach { case t @ Timeout(expires, action) =>
+        if (now >= expires) {
+          action()
+          cancel(t)
+        }
       }
 
       phases foreach (_())
@@ -44,7 +43,7 @@ object Event {
 
   def phase(p: => Unit): Unit = phases += (() => p)
 
-  def event(e: Event): Unit = synchronized(events enqueue e)
+  def event(e: Event): Unit = events enqueue e
 
   def get: Option[Event] =
     if (events nonEmpty) Some(events.dequeue())
@@ -65,11 +64,11 @@ case class Timeout(expires: Long, action: () => Unit)
 
 trait Event
 case class SegmentChangeEvent(views: Seq[TextView], line: Int, from: Int, count: Int, chars: String) extends Event
-case class LineChangeEvent(views: Seq[TextView], line: Int, from: Int, chars: String)                extends Event
-case class LinesChangeEvent(views: Seq[TextView], line: Int)                                         extends Event
-case class DocumentModifiedEvent(model: TextModel)                                                   extends Event
-case class DocumentLoadEvent(views: Seq[TextView])                                                   extends Event
-case class DocumentSaveEvent(model: TextModel)                                                       extends Event
-case class KeyEvent(key: String)                                                                     extends Event
-case class MouseEvent(e: String)                                                                     extends Event
-case object ResizeEvent                                                                              extends Event
+case class LineChangeEvent(views: Seq[TextView], line: Int, from: Int, chars: String) extends Event
+case class LinesChangeEvent(views: Seq[TextView], line: Int) extends Event
+case class DocumentModifiedEvent(model: TextModel) extends Event
+case class DocumentLoadEvent(views: Seq[TextView]) extends Event
+case class DocumentSaveEvent(model: TextModel) extends Event
+case class KeyEvent(key: String) extends Event
+case class MouseEvent(e: String) extends Event
+case object ResizeEvent extends Event
